@@ -3,6 +3,14 @@ name = "sentry-rs"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "sentry_rs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sentry-rs"
+path = "src/main.rs"
+
 [dependencies]
 rmcp = { version = "0.8", features = ["server", "macros", "transport-io"] }
 tokio = { version = "1", features = ["full"] }

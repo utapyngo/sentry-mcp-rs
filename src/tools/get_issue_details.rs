@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::Value;
 
-fn format_frame_detail(output: &mut String, frame: &Value) {
+pub fn format_frame_detail(output: &mut String, frame: &Value) {
     let filename = frame.get("filename").and_then(|v| v.as_str()).unwrap_or("?");
     let lineno = frame.get("lineNo").and_then(|v| v.as_i64()).unwrap_or(0);
     let func = frame.get("function").and_then(|v| v.as_str()).unwrap_or("?");
@@ -42,7 +42,7 @@ fn format_frame_detail(output: &mut String, frame: &Value) {
     }
 }
 
-fn format_exception(output: &mut String, exc: &Value) {
+pub fn format_exception(output: &mut String, exc: &Value) {
     let exc_type = exc.get("type").and_then(|v| v.as_str()).unwrap_or("Error");
     let exc_value = exc.get("value").and_then(|v| v.as_str()).unwrap_or("");
     output.push_str(&format!("\n### {}: {}\n", exc_type, exc_value));
@@ -86,7 +86,7 @@ fn format_exception(output: &mut String, exc: &Value) {
     }
 }
 
-fn format_event_entries(output: &mut String, entries: &[crate::api_client::EventEntry]) {
+pub fn format_event_entries(output: &mut String, entries: &[crate::api_client::EventEntry]) {
     for entry in entries {
         if entry.entry_type == "exception" {
             if let Some(values) = entry.data.get("values").and_then(|v| v.as_array()) {
@@ -102,7 +102,7 @@ fn format_event_entries(output: &mut String, entries: &[crate::api_client::Event
     }
 }
 
-fn format_extra_data(output: &mut String, extra: &serde_json::Map<String, Value>) {
+pub fn format_extra_data(output: &mut String, extra: &serde_json::Map<String, Value>) {
     output.push_str("\n### Extra Data\n");
     for (key, val) in extra {
         let v_str = match val {
@@ -123,7 +123,7 @@ fn format_extra_data(output: &mut String, extra: &serde_json::Map<String, Value>
     }
 }
 
-fn format_contexts(output: &mut String, contexts: &serde_json::Map<String, Value>) {
+pub fn format_contexts(output: &mut String, contexts: &serde_json::Map<String, Value>) {
     output.push_str("\n### Context\n");
     for (key, val) in contexts {
         if let Some(obj) = val.as_object() {
@@ -151,7 +151,7 @@ pub struct GetIssueDetailsInput {
     pub event_id: Option<String>,
 }
 
-fn parse_issue_url(url: &str) -> Option<(String, String)> {
+pub fn parse_issue_url(url: &str) -> Option<(String, String)> {
     let re = Regex::new(r"https?://[^/]+/organizations/([^/]+)/issues/([^/?]+)").ok()?;
     let caps = re.captures(url)?;
     Some((caps[1].to_string(), caps[2].to_string()))

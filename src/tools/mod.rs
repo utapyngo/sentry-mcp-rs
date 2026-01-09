@@ -1,6 +1,6 @@
-mod get_issue_details;
-mod get_trace_details;
-mod search_issue_events;
+pub mod get_issue_details;
+pub mod get_trace_details;
+pub mod search_issue_events;
 
 use crate::api_client::SentryApiClient;
 use get_issue_details::{GetIssueDetailsInput, execute as execute_get_issue_details};

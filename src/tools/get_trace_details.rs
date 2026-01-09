@@ -12,7 +12,7 @@ pub struct GetTraceDetailsInput {
     pub trace_id: String,
 }
 
-fn format_duration(ms: f64) -> String {
+pub fn format_duration(ms: f64) -> String {
     if ms >= 1000.0 {
         format!("{:.2}s", ms / 1000.0)
     } else {
@@ -20,7 +20,7 @@ fn format_duration(ms: f64) -> String {
     }
 }
 
-fn collect_operations(tx: &TraceTransaction, ops: &mut HashMap<String, (i32, f64)>) {
+pub fn collect_operations(tx: &TraceTransaction, ops: &mut HashMap<String, (i32, f64)>) {
     if let Some(op) = &tx.span_op {
         let duration = tx.span_duration.unwrap_or(0.0);
         let entry = ops.entry(op.clone()).or_insert((0, 0.0));
@@ -32,7 +32,7 @@ fn collect_operations(tx: &TraceTransaction, ops: &mut HashMap<String, (i32, f64
     }
 }
 
-fn format_span_tree(tx: &TraceTransaction, depth: usize, output: &mut String) {
+pub fn format_span_tree(tx: &TraceTransaction, depth: usize, output: &mut String) {
     let indent = "  ".repeat(depth);
     let duration = tx.span_duration.map(format_duration).unwrap_or_default();
     let op = tx.span_op.as_deref().unwrap_or("unknown");
