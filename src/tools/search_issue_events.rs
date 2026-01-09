@@ -9,7 +9,12 @@ pub struct SearchIssueEventsInput {
     pub organization_slug: String,
     #[schemars(description = "Issue ID like 'PROJECT-123' or numeric ID")]
     pub issue_id: String,
-    #[schemars(description = "Sentry search query (e.g., 'browser.name:Chrome user.email:*@example.com')")]
+    #[schemars(description = "Sentry search query. Syntax: key:value pairs with optional raw text. \
+        Operators: > < >= <= for numbers, ! for negation, * for wildcard, OR/AND for logic. \
+        Event properties: environment, release, platform, message, user.id, user.email, \
+        device.family, browser.name, os.name, server_name, transaction. \
+        Examples: 'server_name:web-1', 'environment:production', '!user.email:*@test.com', \
+        'browser.name:Chrome OR browser.name:Firefox'")]
     pub query: Option<String>,
     #[schemars(description = "Maximum number of events to return (default: 10, max: 100)")]
     pub limit: Option<i32>,
