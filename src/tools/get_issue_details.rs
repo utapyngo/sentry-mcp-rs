@@ -1,4 +1,4 @@
-use crate::api_client::SentryApiClient;
+use crate::api_client::SentryApi;
 use regex::Regex;
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
@@ -228,7 +228,7 @@ pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_
 }
 
 pub async fn execute(
-    client: &SentryApiClient,
+    client: &impl SentryApi,
     input: GetIssueDetailsInput,
 ) -> Result<CallToolResult, McpError> {
     let (org_slug, issue_id) = if let Some(url) = &input.issue_url {

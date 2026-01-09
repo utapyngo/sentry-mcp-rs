@@ -1,4 +1,4 @@
-use crate::api_client::{SentryApiClient, TraceResponse, TraceTransaction};
+use crate::api_client::{SentryApi, TraceResponse, TraceTransaction};
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -108,7 +108,7 @@ pub fn format_trace_output(trace_id: &str, trace: &TraceResponse) -> String {
 }
 
 pub async fn execute(
-    client: &SentryApiClient,
+    client: &impl SentryApi,
     input: GetTraceDetailsInput,
 ) -> Result<CallToolResult, McpError> {
     let trace = client

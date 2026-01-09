@@ -42,7 +42,7 @@ impl SentryTools {
         Parameters(input): Parameters<GetIssueDetailsInput>,
     ) -> Result<CallToolResult, McpError> {
         info!("get_issue_details: {:?}", input);
-        execute_get_issue_details(&self.client, input).await
+        execute_get_issue_details(&*self.client, input).await
     }
     #[rmcp::tool(description = "Retrieve trace details including span tree and timing information. Useful for analyzing distributed system performance.")]
     async fn get_trace_details(
@@ -50,7 +50,7 @@ impl SentryTools {
         Parameters(input): Parameters<GetTraceDetailsInput>,
     ) -> Result<CallToolResult, McpError> {
         info!("get_trace_details: {:?}", input);
-        execute_get_trace_details(&self.client, input).await
+        execute_get_trace_details(&*self.client, input).await
     }
     #[rmcp::tool(description = "Search events for a specific issue using a query string. Returns matching events with their details.")]
     async fn search_issue_events(
@@ -58,7 +58,7 @@ impl SentryTools {
         Parameters(input): Parameters<SearchIssueEventsInput>,
     ) -> Result<CallToolResult, McpError> {
         info!("search_issue_events: {:?}", input);
-        execute_search_events(&self.client, input).await
+        execute_search_events(&*self.client, input).await
     }
 }
 

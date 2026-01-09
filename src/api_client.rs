@@ -1,14 +1,24 @@
+use async_trait::async_trait;
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use std::env;
 use tracing::info;
+
+#[async_trait]
+pub trait SentryApi: Send + Sync {
+    async fn get_issue(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Issue>;
+    async fn get_latest_event(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Event>;
+    async fn get_event(&self, org_slug: &str, issue_id: &str, event_id: &str) -> anyhow::Result<Event>;
+    async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceResponse>;
+    async fn list_events_for_issue(&self, org_slug: &str, issue_id: &str, query: &EventsQuery) -> anyhow::Result<Vec<Event>>;
+}
 
 pub struct SentryApiClient {
     client: Client,
     base_url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct Issue {
@@ -39,7 +49,7 @@ pub struct Issue {
     pub issue_category: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct Project {
     pub id: String,
@@ -47,7 +57,7 @@ pub struct Project {
     pub slug: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct IssueTag {
     pub key: String,
@@ -56,13 +66,13 @@ pub struct IssueTag {
     pub total_values: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct EventTag {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct Event {
@@ -85,7 +95,7 @@ pub struct Event {
     pub tags: Vec<EventTag>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct EventEntry {
     #[serde(rename = "type")]
     pub entry_type: String,
@@ -93,14 +103,14 @@ pub struct EventEntry {
     pub data: serde_json::Value,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TraceResponse {
     pub transactions: Vec<TraceTransaction>,
     #[serde(default)]
     pub orphan_errors: Vec<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct TraceTransaction {
@@ -161,7 +171,11 @@ impl SentryApiClient {
         let client = builder.build().expect("Failed to build HTTP client");
         Self { client, base_url }
     }
-    pub async fn get_issue(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Issue> {
+}
+
+#[async_trait]
+impl SentryApi for SentryApiClient {
+    async fn get_issue(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Issue> {
         let url = format!(
             "{}/organizations/{}/issues/{}/",
             self.base_url, org_slug, issue_id
@@ -179,7 +193,7 @@ impl SentryApiClient {
             anyhow::anyhow!("JSON parse error: {}", e)
         })
     }
-    pub async fn get_latest_event(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Event> {
+    async fn get_latest_event(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Event> {
         let url = format!(
             "{}/organizations/{}/issues/{}/events/latest/",
             self.base_url, org_slug, issue_id
@@ -197,7 +211,7 @@ impl SentryApiClient {
             anyhow::anyhow!("JSON parse error: {}", e)
         })
     }
-    pub async fn get_event(
+    async fn get_event(
         &self,
         org_slug: &str,
         issue_id: &str,
@@ -216,7 +230,7 @@ impl SentryApiClient {
         }
         Ok(resp.json().await?)
     }
-    pub async fn get_trace(
+    async fn get_trace(
         &self,
         org_slug: &str,
         trace_id: &str,
@@ -234,7 +248,7 @@ impl SentryApiClient {
         }
         Ok(resp.json().await?)
     }
-    pub async fn list_events_for_issue(
+    async fn list_events_for_issue(
         &self,
         org_slug: &str,
         issue_id: &str,

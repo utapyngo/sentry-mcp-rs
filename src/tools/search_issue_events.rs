@@ -1,4 +1,4 @@
-use crate::api_client::{Event, EventsQuery, SentryApiClient};
+use crate::api_client::{Event, EventsQuery, SentryApi};
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -71,7 +71,7 @@ pub fn format_events_output(issue_id: &str, query: Option<&str>, events: &[Event
 }
 
 pub async fn execute(
-    client: &SentryApiClient,
+    client: &impl SentryApi,
     input: SearchIssueEventsInput,
 ) -> Result<CallToolResult, McpError> {
     let limit = input.limit.unwrap_or(10).min(100);
