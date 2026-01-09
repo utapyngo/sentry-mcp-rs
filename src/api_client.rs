@@ -1,7 +1,7 @@
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use std::env;
-use tracing::debug;
+use tracing::info;
 
 pub struct SentryApiClient {
     client: Client,
@@ -166,7 +166,7 @@ impl SentryApiClient {
             "{}/organizations/{}/issues/{}/",
             self.base_url, org_slug, issue_id
         );
-        debug!("GET {}", url);
+        info!("GET {}", url);
         let resp = self.client.get(&url).send().await?;
         let status = resp.status();
         if !status.is_success() {
@@ -184,7 +184,7 @@ impl SentryApiClient {
             "{}/organizations/{}/issues/{}/events/latest/",
             self.base_url, org_slug, issue_id
         );
-        debug!("GET {}", url);
+        info!("GET {}", url);
         let resp = self.client.get(&url).send().await?;
         let status = resp.status();
         if !status.is_success() {
@@ -207,7 +207,7 @@ impl SentryApiClient {
             "{}/organizations/{}/issues/{}/events/{}/",
             self.base_url, org_slug, issue_id, event_id
         );
-        debug!("GET {}", url);
+        info!("GET {}", url);
         let resp = self.client.get(&url).send().await?;
         let status = resp.status();
         if !status.is_success() {
@@ -225,7 +225,7 @@ impl SentryApiClient {
             "{}/organizations/{}/events-trace/{}/?limit=100&useSpans=1",
             self.base_url, org_slug, trace_id
         );
-        debug!("GET {}", url);
+        info!("GET {}", url);
         let resp = self.client.get(&url).send().await?;
         let status = resp.status();
         if !status.is_success() {
@@ -249,7 +249,7 @@ impl SentryApiClient {
             url.push('?');
             url.push_str(&query_string);
         }
-        debug!("GET {}", url);
+        info!("GET {}", url);
         let resp = self.client.get(&url).send().await?;
         let status = resp.status();
         if !status.is_success() {

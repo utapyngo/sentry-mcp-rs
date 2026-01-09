@@ -14,6 +14,7 @@ use rmcp::{
 };
 use search_issue_events::{SearchIssueEventsInput, execute as execute_search_events};
 use std::sync::Arc;
+use tracing::info;
 
 #[derive(Clone)]
 pub struct SentryTools {
@@ -40,6 +41,7 @@ impl SentryTools {
         &self,
         Parameters(input): Parameters<GetIssueDetailsInput>,
     ) -> Result<CallToolResult, McpError> {
+        info!("get_issue_details: {:?}", input);
         execute_get_issue_details(&self.client, input).await
     }
     #[rmcp::tool(description = "Retrieve trace details including span tree and timing information. Useful for analyzing distributed system performance.")]
@@ -47,6 +49,7 @@ impl SentryTools {
         &self,
         Parameters(input): Parameters<GetTraceDetailsInput>,
     ) -> Result<CallToolResult, McpError> {
+        info!("get_trace_details: {:?}", input);
         execute_get_trace_details(&self.client, input).await
     }
     #[rmcp::tool(description = "Search events for a specific issue using a query string. Returns matching events with their details.")]
@@ -54,6 +57,7 @@ impl SentryTools {
         &self,
         Parameters(input): Parameters<SearchIssueEventsInput>,
     ) -> Result<CallToolResult, McpError> {
+        info!("search_issue_events: {:?}", input);
         execute_search_events(&self.client, input).await
     }
 }
