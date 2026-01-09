@@ -157,6 +157,76 @@ pub fn parse_issue_url(url: &str) -> Option<(String, String)> {
     Some((caps[1].to_string(), caps[2].to_string()))
 }
 
+pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_client::Event) -> String {
+    let mut output = String::new();
+    output.push_str("# Issue Details\n\n");
+    output.push_str(&format!("**ID:** {}\n", issue.short_id));
+    output.push_str(&format!("**Title:** {}\n", issue.title));
+    output.push_str(&format!("**Status:** {}\n", issue.status));
+    if let Some(substatus) = &issue.substatus {
+        output.push_str(&format!("**Substatus:** {}\n", substatus));
+    }
+    if let Some(issue_type) = &issue.issue_type {
+        output.push_str(&format!("**Issue Type:** {}\n", issue_type));
+    }
+    if let Some(issue_category) = &issue.issue_category {
+        output.push_str(&format!("**Issue Category:** {}\n", issue_category));
+    }
+    if let Some(level) = &issue.level {
+        output.push_str(&format!("**Level:** {}\n", level));
+    }
+    if let Some(culprit) = &issue.culprit {
+        output.push_str(&format!("**Culprit:** {}\n", culprit));
+    }
+    output.push_str(&format!(
+        "**Project:** {} ({})\n",
+        issue.project.name, issue.project.slug
+    ));
+    if let Some(platform) = &issue.platform {
+        output.push_str(&format!("**Platform:** {}\n", platform));
+    }
+    output.push_str(&format!("**First Seen:** {}\n", issue.first_seen));
+    output.push_str(&format!("**Last Seen:** {}\n", issue.last_seen));
+    output.push_str(&format!("**Event Count:** {}\n", issue.count));
+    output.push_str(&format!("**User Count:** {}\n", issue.user_count));
+    if let Some(permalink) = &issue.permalink {
+        output.push_str(&format!("**URL:** {}\n", permalink));
+    }
+    if !issue.tags.is_empty() {
+        output.push_str("\n## Tags\n");
+        for tag in &issue.tags {
+            output.push_str(&format!(
+                "- **{}:** {} ({} events)\n",
+                tag.key, tag.name, tag.total_values
+            ));
+        }
+    }
+    output.push_str("\n## Latest Event\n\n");
+    output.push_str(&format!("**Event ID:** {}\n", event.event_id));
+    output.push_str(&format!("**Date:** {}\n", event.date_created));
+    if let Some(msg) = &event.message {
+        output.push_str(&format!("**Message:** {}\n", msg));
+    }
+    format_event_entries(&mut output, &event.entries);
+    if !event.tags.is_empty() {
+        output.push_str("\n### Event Tags\n");
+        for tag in &event.tags {
+            output.push_str(&format!("**{}:** {}\n", tag.key, tag.value));
+        }
+    }
+    if let Some(extra) = event.context.as_object()
+        && !extra.is_empty()
+    {
+        format_extra_data(&mut output, extra);
+    }
+    if let Some(contexts) = event.contexts.as_object()
+        && !contexts.is_empty()
+    {
+        format_contexts(&mut output, contexts);
+    }
+    output
+}
+
 pub async fn execute(
     client: &SentryApiClient,
     input: GetIssueDetailsInput,
@@ -195,65 +265,6 @@ pub async fn execute(
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?
     };
-    let mut output = String::new();
-    output.push_str("# Issue Details\n\n");
-    output.push_str(&format!("**ID:** {}\n", issue.short_id));
-    output.push_str(&format!("**Title:** {}\n", issue.title));
-    output.push_str(&format!("**Status:** {}\n", issue.status));
-    if let Some(substatus) = &issue.substatus {
-        output.push_str(&format!("**Substatus:** {}\n", substatus));
-    }
-    if let Some(issue_type) = &issue.issue_type {
-        output.push_str(&format!("**Issue Type:** {}\n", issue_type));
-    }
-    if let Some(issue_category) = &issue.issue_category {
-        output.push_str(&format!("**Issue Category:** {}\n", issue_category));
-    }
-    if let Some(level) = &issue.level {
-        output.push_str(&format!("**Level:** {}\n", level));
-    }
-    if let Some(culprit) = &issue.culprit {
-        output.push_str(&format!("**Culprit:** {}\n", culprit));
-    }
-    output.push_str(&format!("**Project:** {} ({})\n", issue.project.name, issue.project.slug));
-    if let Some(platform) = &issue.platform {
-        output.push_str(&format!("**Platform:** {}\n", platform));
-    }
-    output.push_str(&format!("**First Seen:** {}\n", issue.first_seen));
-    output.push_str(&format!("**Last Seen:** {}\n", issue.last_seen));
-    output.push_str(&format!("**Event Count:** {}\n", issue.count));
-    output.push_str(&format!("**User Count:** {}\n", issue.user_count));
-    if let Some(permalink) = &issue.permalink {
-        output.push_str(&format!("**URL:** {}\n", permalink));
-    }
-    if !issue.tags.is_empty() {
-        output.push_str("\n## Tags\n");
-        for tag in &issue.tags {
-            output.push_str(&format!("- **{}:** {} ({} events)\n", tag.key, tag.name, tag.total_values));
-        }
-    }
-    output.push_str("\n## Latest Event\n\n");
-    output.push_str(&format!("**Event ID:** {}\n", event.event_id));
-    output.push_str(&format!("**Date:** {}\n", event.date_created));
-    if let Some(msg) = &event.message {
-        output.push_str(&format!("**Message:** {}\n", msg));
-    }
-    format_event_entries(&mut output, &event.entries);
-    if !event.tags.is_empty() {
-        output.push_str("\n### Event Tags\n");
-        for tag in &event.tags {
-            output.push_str(&format!("**{}:** {}\n", tag.key, tag.value));
-        }
-    }
-    if let Some(extra) = event.context.as_object()
-        && !extra.is_empty()
-    {
-        format_extra_data(&mut output, extra);
-    }
-    if let Some(contexts) = event.contexts.as_object()
-        && !contexts.is_empty()
-    {
-        format_contexts(&mut output, contexts);
-    }
+    let output = format_issue_output(&issue, &event);
     Ok(CallToolResult::success(vec![rmcp::model::Content::text(output)]))
 }

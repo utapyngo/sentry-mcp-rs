@@ -1,4 +1,4 @@
-use crate::api_client::{SentryApiClient, TraceTransaction};
+use crate::api_client::{SentryApiClient, TraceResponse, TraceTransaction};
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -48,17 +48,10 @@ pub fn format_span_tree(tx: &TraceTransaction, depth: usize, output: &mut String
     }
 }
 
-pub async fn execute(
-    client: &SentryApiClient,
-    input: GetTraceDetailsInput,
-) -> Result<CallToolResult, McpError> {
-    let trace = client
-        .get_trace(&input.organization_slug, &input.trace_id)
-        .await
-        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+pub fn format_trace_output(trace_id: &str, trace: &TraceResponse) -> String {
     let mut output = String::new();
     output.push_str("# Trace Details\n\n");
-    output.push_str(&format!("**Trace ID:** {}\n", input.trace_id));
+    output.push_str(&format!("**Trace ID:** {}\n", trace_id));
     output.push_str(&format!("**Transactions:** {}\n", trace.transactions.len()));
     output.push_str(&format!("**Orphan Errors:** {}\n", trace.orphan_errors.len()));
     if let Some(root) = trace.transactions.first() {
@@ -70,7 +63,10 @@ pub async fn execute(
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or(root.timestamp);
         let total_duration_ms = (end - start) * 1000.0;
-        output.push_str(&format!("**Total Duration:** {}\n", format_duration(total_duration_ms)));
+        output.push_str(&format!(
+            "**Total Duration:** {}\n",
+            format_duration(total_duration_ms)
+        ));
     }
     let mut ops: HashMap<String, (i32, f64)> = HashMap::new();
     for tx in &trace.transactions {
@@ -83,7 +79,9 @@ pub async fn execute(
         for (op, (count, total_ms)) in ops_vec {
             output.push_str(&format!(
                 "- **{}**: {} occurrences, {} total\n",
-                op, count, format_duration(total_ms)
+                op,
+                count,
+                format_duration(total_ms)
             ));
         }
     }
@@ -95,10 +93,28 @@ pub async fn execute(
     if !trace.orphan_errors.is_empty() {
         output.push_str("\n## Orphan Errors\n\n");
         for (i, err) in trace.orphan_errors.iter().take(5).enumerate() {
-            let title = err.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown error");
-            let project = err.get("project_slug").and_then(|v| v.as_str()).unwrap_or("?");
+            let title = err
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            let project = err
+                .get("project_slug")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
             output.push_str(&format!("{}. {} ({})\n", i + 1, title, project));
         }
     }
+    output
+}
+
+pub async fn execute(
+    client: &SentryApiClient,
+    input: GetTraceDetailsInput,
+) -> Result<CallToolResult, McpError> {
+    let trace = client
+        .get_trace(&input.organization_slug, &input.trace_id)
+        .await
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+    let output = format_trace_output(&input.trace_id, &trace);
     Ok(CallToolResult::success(vec![rmcp::model::Content::text(output)]))
 }

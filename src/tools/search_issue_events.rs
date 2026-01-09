@@ -1,4 +1,4 @@
-use crate::api_client::{EventsQuery, SentryApiClient};
+use crate::api_client::{Event, EventsQuery, SentryApiClient};
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -22,6 +22,54 @@ pub struct SearchIssueEventsInput {
     pub sort: Option<String>,
 }
 
+pub fn format_events_output(issue_id: &str, query: Option<&str>, events: &[Event]) -> String {
+    let mut output = String::new();
+    output.push_str("# Issue Events\n\n");
+    output.push_str(&format!("**Issue:** {}\n", issue_id));
+    if let Some(q) = query {
+        output.push_str(&format!("**Query:** {}\n", q));
+    }
+    output.push_str(&format!("**Found:** {} events\n\n", events.len()));
+    for (i, event) in events.iter().enumerate() {
+        output.push_str(&format!("## Event {} - {}\n\n", i + 1, event.event_id));
+        output.push_str(&format!("**Date:** {}\n", event.date_created));
+        if let Some(platform) = &event.platform {
+            output.push_str(&format!("**Platform:** {}\n", platform));
+        }
+        if let Some(msg) = &event.message
+            && !msg.is_empty()
+        {
+            output.push_str(&format!("**Message:** {}\n", msg));
+        }
+        if !event.tags.is_empty() {
+            output.push_str("**Tags:** ");
+            let tags: Vec<String> = event
+                .tags
+                .iter()
+                .map(|t| format!("{}={}", t.key, t.value))
+                .collect();
+            output.push_str(&tags.join(", "));
+            output.push('\n');
+        }
+        for entry in &event.entries {
+            if entry.entry_type == "exception"
+                && let Some(values) = entry.data.get("values").and_then(|v| v.as_array())
+            {
+                for exc in values {
+                    let exc_type = exc.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                    let exc_value = exc.get("value").and_then(|v| v.as_str()).unwrap_or("?");
+                    output.push_str(&format!("**Exception:** {} - {}\n", exc_type, exc_value));
+                }
+            }
+        }
+        output.push('\n');
+    }
+    if events.is_empty() {
+        output.push_str("No events found matching the query.\n");
+    }
+    output
+}
+
 pub async fn execute(
     client: &SentryApiClient,
     input: SearchIssueEventsInput,
@@ -37,43 +85,6 @@ pub async fn execute(
         .list_events_for_issue(&input.organization_slug, &input.issue_id, &query)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-    let mut output = String::new();
-    output.push_str("# Issue Events\n\n");
-    output.push_str(&format!("**Issue:** {}\n", input.issue_id));
-    if let Some(q) = &input.query {
-        output.push_str(&format!("**Query:** {}\n", q));
-    }
-    output.push_str(&format!("**Found:** {} events\n\n", events.len()));
-    for (i, event) in events.iter().enumerate() {
-        output.push_str(&format!("## Event {} - {}\n\n", i + 1, event.event_id));
-        output.push_str(&format!("**Date:** {}\n", event.date_created));
-        if let Some(platform) = &event.platform {
-            output.push_str(&format!("**Platform:** {}\n", platform));
-        }
-        if let Some(msg) = &event.message
-            && !msg.is_empty() {
-                output.push_str(&format!("**Message:** {}\n", msg));
-            }
-        if !event.tags.is_empty() {
-            output.push_str("**Tags:** ");
-            let tags: Vec<String> = event.tags.iter().map(|t| format!("{}={}", t.key, t.value)).collect();
-            output.push_str(&tags.join(", "));
-            output.push('\n');
-        }
-        for entry in &event.entries {
-            if entry.entry_type == "exception"
-                && let Some(values) = entry.data.get("values").and_then(|v| v.as_array()) {
-                    for exc in values {
-                        let exc_type = exc.get("type").and_then(|v| v.as_str()).unwrap_or("?");
-                        let exc_value = exc.get("value").and_then(|v| v.as_str()).unwrap_or("?");
-                        output.push_str(&format!("**Exception:** {} - {}\n", exc_type, exc_value));
-                    }
-                }
-        }
-        output.push('\n');
-    }
-    if events.is_empty() {
-        output.push_str("No events found matching the query.\n");
-    }
+    let output = format_events_output(&input.issue_id, input.query.as_deref(), &events);
     Ok(CallToolResult::success(vec![rmcp::model::Content::text(output)]))
 }

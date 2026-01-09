@@ -1,5 +1,8 @@
-use sentry_rs::api_client::TraceTransaction;
-use sentry_rs::tools::get_trace_details::{collect_operations, format_duration, format_span_tree};
+use sentry_rs::api_client::{TraceResponse, TraceTransaction};
+use sentry_rs::tools::get_trace_details::{
+    collect_operations, format_duration, format_span_tree, format_trace_output,
+};
+use serde_json::json;
 use std::collections::HashMap;
 
 #[test]
@@ -121,4 +124,167 @@ fn test_format_span_tree_unknown_op() {
     let mut output = String::new();
     format_span_tree(&tx, 0, &mut output);
     assert!(output.contains("unknown"));
+}
+
+#[test]
+fn test_format_trace_output_empty() {
+    let trace = TraceResponse {
+        transactions: vec![],
+        orphan_errors: vec![],
+    };
+    let output = format_trace_output("abc123def456", &trace);
+    assert!(output.contains("# Trace Details"));
+    assert!(output.contains("**Trace ID:** abc123def456"));
+    assert!(output.contains("**Transactions:** 0"));
+    assert!(output.contains("**Orphan Errors:** 0"));
+}
+
+#[test]
+fn test_format_trace_output_with_transaction() {
+    let tx = make_tx(Some("http.request"), Some(150.0), vec![]);
+    let trace = TraceResponse {
+        transactions: vec![tx],
+        orphan_errors: vec![],
+    };
+    let output = format_trace_output("trace-id", &trace);
+    assert!(output.contains("**Transactions:** 1"));
+    assert!(output.contains("## Operation Breakdown"));
+    assert!(output.contains("**http.request**"));
+    assert!(output.contains("## Span Tree"));
+}
+
+#[test]
+fn test_format_trace_output_with_orphan_errors() {
+    let trace = TraceResponse {
+        transactions: vec![],
+        orphan_errors: vec![
+            json!({"title": "Error 1", "project_slug": "proj-a"}),
+            json!({"title": "Error 2", "project_slug": "proj-b"}),
+        ],
+    };
+    let output = format_trace_output("trace-123", &trace);
+    assert!(output.contains("## Orphan Errors"));
+    assert!(output.contains("1. Error 1 (proj-a)"));
+    assert!(output.contains("2. Error 2 (proj-b)"));
+}
+
+#[test]
+fn test_format_trace_output_duration_calculation() {
+    let mut tx1 = make_tx(Some("http"), Some(100.0), vec![]);
+    tx1.start_timestamp = 1000.0;
+    tx1.timestamp = 1001.0;
+    let mut tx2 = make_tx(Some("db"), Some(50.0), vec![]);
+    tx2.start_timestamp = 1000.5;
+    tx2.timestamp = 1002.0;
+    let trace = TraceResponse {
+        transactions: vec![tx1, tx2],
+        orphan_errors: vec![],
+    };
+    let output = format_trace_output("trace-id", &trace);
+    assert!(output.contains("**Total Duration:**"));
+    assert!(output.contains("2.00s"));
+}
+
+#[test]
+fn test_format_trace_output_orphan_errors_limited_to_five() {
+    let errors: Vec<serde_json::Value> = (1..=10)
+        .map(|i| json!({"title": format!("Error {}", i), "project_slug": "proj"}))
+        .collect();
+    let trace = TraceResponse {
+        transactions: vec![],
+        orphan_errors: errors,
+    };
+    let output = format_trace_output("trace-id", &trace);
+    assert!(output.contains("5. Error 5"));
+    assert!(!output.contains("6. Error 6"));
+}
+
+#[test]
+fn test_format_span_tree_no_duration() {
+    let tx = make_tx(Some("http"), None, vec![]);
+    let mut output = String::new();
+    format_span_tree(&tx, 0, &mut output);
+    assert!(output.contains("http"));
+}
+
+#[test]
+fn test_format_span_tree_no_description() {
+    let mut tx = make_tx(Some("http"), Some(100.0), vec![]);
+    tx.span_description = None;
+    let mut output = String::new();
+    format_span_tree(&tx, 0, &mut output);
+    assert!(output.contains("http"));
+}
+
+#[test]
+fn test_format_span_tree_no_status() {
+    let mut tx = make_tx(Some("http"), Some(100.0), vec![]);
+    tx.span_status = None;
+    let mut output = String::new();
+    format_span_tree(&tx, 0, &mut output);
+    assert!(output.contains("http"));
+    assert!(output.contains("✓")); // defaults to "ok" status
+}
+
+#[test]
+fn test_collect_operations_no_duration() {
+    let tx = make_tx(Some("http"), None, vec![]);
+    let mut ops: HashMap<String, (i32, f64)> = HashMap::new();
+    collect_operations(&tx, &mut ops);
+    assert_eq!(ops.get("http"), Some(&(1, 0.0)));
+}
+
+#[test]
+fn test_format_trace_output_multiple_same_operations() {
+    let tx1 = make_tx(Some("db.query"), Some(50.0), vec![]);
+    let tx2 = make_tx(Some("db.query"), Some(30.0), vec![]);
+    let tx3 = make_tx(Some("db.query"), Some(20.0), vec![]);
+    let trace = TraceResponse {
+        transactions: vec![tx1, tx2, tx3],
+        orphan_errors: vec![],
+    };
+    let output = format_trace_output("trace-id", &trace);
+    assert!(output.contains("**db.query**"));
+    assert!(output.contains("3 occurrences"));
+    assert!(output.contains("100.00ms total"));
+}
+
+#[test]
+fn test_format_span_tree_deep_nesting() {
+    let level3 = make_tx(Some("level3"), Some(10.0), vec![]);
+    let level2 = make_tx(Some("level2"), Some(20.0), vec![level3]);
+    let level1 = make_tx(Some("level1"), Some(30.0), vec![level2]);
+    let root = make_tx(Some("root"), Some(100.0), vec![level1]);
+    let mut output = String::new();
+    format_span_tree(&root, 0, &mut output);
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(lines.len(), 4);
+    assert!(lines[0].starts_with("✓"));
+    assert!(lines[1].starts_with("  ✓"));
+    assert!(lines[2].starts_with("    ✓"));
+    assert!(lines[3].starts_with("      ✓"));
+}
+
+#[test]
+fn test_format_trace_output_orphan_error_without_title() {
+    let errors = vec![json!({"project_slug": "proj"})];
+    let trace = TraceResponse {
+        transactions: vec![],
+        orphan_errors: errors,
+    };
+    let output = format_trace_output("trace-id", &trace);
+    assert!(output.contains("## Orphan Errors"));
+    assert!(output.contains("1. Unknown"));
+}
+
+#[test]
+fn test_format_trace_output_orphan_error_without_project() {
+    let errors = vec![json!({"title": "Error"})];
+    let trace = TraceResponse {
+        transactions: vec![],
+        orphan_errors: errors,
+    };
+    let output = format_trace_output("trace-id", &trace);
+    assert!(output.contains("## Orphan Errors"));
+    assert!(output.contains("1. Error"));
 }

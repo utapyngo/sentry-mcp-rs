@@ -23,3 +23,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 regex = "1"
 schemars = "1"
+async-trait = "0.1"
+
+[dev-dependencies]
+mockall = "0.13"
