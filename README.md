@@ -16,6 +16,12 @@ This MCP server provides tools to interact with Sentry's API:
 cargo install --git https://github.com/utapyngo/sentry-mcp-rs.git
 ```
 
+Or with [mise](https://mise.jdx.dev/) (requires a release):
+
+```bash
+mise x github:utapyngo/sentry-mcp-rs -- sentry-rs
+```
+
 This installs the `sentry-rs` binary to `~/.cargo/bin/`.
 
 ## Configuration
