@@ -2,6 +2,9 @@
 name = "sentry-rs"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/utapyngo/sentry-mcp-rs"
+description = "A minimal MCP server for Sentry"
 
 [lib]
 name = "sentry_rs"
