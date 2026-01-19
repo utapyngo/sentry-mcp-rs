@@ -30,3 +30,6 @@ async-trait = "0.1"
 
 [dev-dependencies]
 mockall = "0.13"
+
+[lints.clippy]
+cognitive_complexity = "warn"
