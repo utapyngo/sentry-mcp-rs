@@ -16,13 +16,13 @@ This MCP server provides tools to interact with Sentry's API:
 cargo install --git https://github.com/utapyngo/sentry-mcp-rs.git
 ```
 
-Or with [mise](https://mise.jdx.dev/) (requires a release):
+Or with [mise](https://mise.jdx.dev/):
 
 ```bash
-mise x github:utapyngo/sentry-mcp-rs -- sentry-rs
+mise use -g github:utapyngo/sentry-mcp-rs
 ```
 
-This installs the `sentry-rs` binary to `~/.cargo/bin/`.
+The binary will be installed as `sentry-rs`.
 
 ## Configuration
 
@@ -39,6 +39,23 @@ Add to your MCP client configuration:
   "mcpServers": {
     "sentry": {
       "command": "sentry-rs",
+      "env": {
+        "SENTRY_AUTH_TOKEN": "your_token_here",
+        "SENTRY_HOST": "sentry.io"
+      }
+    }
+  }
+}
+```
+
+Or without installation using mise:
+
+```json
+{
+  "mcpServers": {
+    "sentry": {
+      "command": "mise",
+      "args": ["x", "github:utapyngo/sentry-mcp-rs", "--", "sentry-rs"],
       "env": {
         "SENTRY_AUTH_TOKEN": "your_token_here",
         "SENTRY_HOST": "sentry.io"
