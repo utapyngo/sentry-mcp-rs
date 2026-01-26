@@ -1,6 +1,7 @@
 # sentry-mcp
 
 [![Crates.io](https://img.shields.io/crates/v/sentry-mcp.svg)](https://crates.io/crates/sentry-mcp)
+[![codecov](https://codecov.io/gh/utapyngo/sentry-mcp-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/utapyngo/sentry-mcp-rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A fast, lightweight [MCP](https://modelcontextprotocol.io/) server for Sentry, written in Rust.
