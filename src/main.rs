@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
         .with_writer(std::io::stderr)
         .with_ansi(false)
         .init();
-    info!("Starting sentry-rs MCP server");
+    info!("Starting sentry-mcp MCP server");
     let tools = SentryTools::new();
     let service = tools.serve(stdio()).await?;
     service.waiting().await?;

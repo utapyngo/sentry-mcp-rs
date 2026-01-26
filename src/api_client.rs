@@ -171,6 +171,10 @@ impl SentryApiClient {
         let client = builder.build().expect("Failed to build HTTP client");
         Self { client, base_url }
     }
+    #[cfg(test)]
+    pub fn with_base_url(client: Client, base_url: String) -> Self {
+        Self { client, base_url }
+    }
 }
 
 #[async_trait]
@@ -277,5 +281,148 @@ impl SentryApi for SentryApiClient {
 impl Default for SentryApiClient {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+    #[tokio::test]
+    async fn test_get_issue_success() {
+        let mock_server = MockServer::start().await;
+        let response = r#"{
+            "id": "123",
+            "shortId": "PROJ-1",
+            "title": "Test Error",
+            "culprit": "test.py",
+            "status": "unresolved",
+            "project": {"id": "1", "name": "Test", "slug": "test"},
+            "firstSeen": "2024-01-01T00:00:00Z",
+            "lastSeen": "2024-01-02T00:00:00Z",
+            "count": "42",
+            "userCount": 5
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/issues/123/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let issue = client.get_issue("test-org", "123").await.unwrap();
+        assert_eq!(issue.id, "123");
+        assert_eq!(issue.short_id, "PROJ-1");
+        assert_eq!(issue.title, "Test Error");
+        assert_eq!(issue.count, "42");
+    }
+    #[tokio::test]
+    async fn test_get_issue_error() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/issues/999/"))
+            .respond_with(ResponseTemplate::new(404).set_body_string("Not Found"))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let result = client.get_issue("test-org", "999").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("404"));
+    }
+    #[tokio::test]
+    async fn test_get_latest_event_success() {
+        let mock_server = MockServer::start().await;
+        let response = r#"{
+            "id": "ev1",
+            "eventID": "abc123",
+            "dateCreated": "2024-01-01T00:00:00Z",
+            "message": "Test message"
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/issues/123/events/latest/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let event = client.get_latest_event("test-org", "123").await.unwrap();
+        assert_eq!(event.event_id, "abc123");
+        assert_eq!(event.date_created, Some("2024-01-01T00:00:00Z".to_string()));
+    }
+    #[tokio::test]
+    async fn test_get_latest_event_without_date_created() {
+        let mock_server = MockServer::start().await;
+        let response = r#"{
+            "id": "ev1",
+            "eventID": "abc123",
+            "message": "Test message"
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/issues/123/events/latest/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let event = client.get_latest_event("test-org", "123").await.unwrap();
+        assert_eq!(event.event_id, "abc123");
+        assert!(event.date_created.is_none());
+    }
+    #[tokio::test]
+    async fn test_get_event_success() {
+        let mock_server = MockServer::start().await;
+        let response = r#"{
+            "id": "ev1",
+            "eventID": "abc123"
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/issues/123/events/abc123/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let event = client.get_event("test-org", "123", "abc123").await.unwrap();
+        assert_eq!(event.event_id, "abc123");
+    }
+    #[tokio::test]
+    async fn test_get_trace_success() {
+        let mock_server = MockServer::start().await;
+        let response = r#"{
+            "transactions": [{
+                "eventId": "tx1",
+                "projectId": 1,
+                "projectSlug": "test",
+                "transaction": "GET /api",
+                "start_timestamp": 1704067200.0,
+                "timestamp": 1704067201.0
+            }],
+            "orphan_errors": []
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/events-trace/trace123/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let trace = client.get_trace("test-org", "trace123").await.unwrap();
+        assert_eq!(trace.transactions.len(), 1);
+        assert_eq!(trace.transactions[0].transaction, "GET /api");
+    }
+    #[tokio::test]
+    async fn test_list_events_for_issue_success() {
+        let mock_server = MockServer::start().await;
+        let response = r#"[
+            {"id": "ev1", "eventID": "abc123"},
+            {"id": "ev2", "eventID": "def456"}
+        ]"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/issues/123/events/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let query = EventsQuery { query: None, limit: Some(10), sort: None };
+        let events = client.list_events_for_issue("test-org", "123", &query).await.unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].event_id, "abc123");
+        assert_eq!(events[1].event_id, "def456");
     }
 }

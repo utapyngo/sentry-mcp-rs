@@ -74,7 +74,7 @@ impl ServerHandler for SentryTools {
                 ..Default::default()
             },
             server_info: Implementation {
-                name: "sentry-rs".to_string(),
+                name: "sentry-mcp".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 title: None,
                 icons: None,

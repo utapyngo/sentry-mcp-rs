@@ -6,6 +6,6 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
     set +a
 fi
-BINARY="./target/release/sentry-rs"
+BINARY="./target/release/sentry-mcp"
 [ -f "$BINARY" ] || cargo build --release
 exec "$BINARY" "$@"
