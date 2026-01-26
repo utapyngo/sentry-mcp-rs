@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("sentry_rs=info".parse()?)
+                .add_directive("sentry_mcp=info".parse()?)
                 .add_directive("reqwest::connect=debug".parse()?)
                 .add_directive("rmcp=warn".parse()?)
                 .add_directive("hyper=warn".parse()?)
