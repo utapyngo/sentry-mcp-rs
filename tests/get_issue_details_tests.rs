@@ -1,5 +1,5 @@
-use sentry_rs::api_client::{Event, EventEntry, EventTag, Issue, IssueTag, Project};
-use sentry_rs::tools::get_issue_details::{
+use sentry_mcp::api_client::{Event, EventEntry, EventTag, Issue, IssueTag, Project};
+use sentry_mcp::tools::get_issue_details::{
     format_contexts, format_event_entries, format_exception, format_extra_data,
     format_frame_detail, format_issue_output, parse_issue_url,
 };

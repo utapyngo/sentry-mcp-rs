@@ -1,4 +1,4 @@
-use sentry_rs::api_client::{
+use sentry_mcp::api_client::{
     Event, EventEntry, EventTag, EventsQuery, Issue, IssueTag, Project, TraceResponse,
     TraceTransaction,
 };

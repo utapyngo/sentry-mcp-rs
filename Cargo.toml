@@ -1,17 +1,20 @@
 [package]
-name = "sentry-rs"
+name = "sentry-mcp"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/utapyngo/sentry-mcp-rs"
 description = "A minimal MCP server for Sentry"
+keywords = ["sentry", "mcp", "model-context-protocol", "llm", "ai"]
+categories = ["development-tools", "api-bindings"]
+readme = "README.md"
 
 [lib]
-name = "sentry_rs"
+name = "sentry_mcp"
 path = "src/lib.rs"
 
 [[bin]]
-name = "sentry-rs"
+name = "sentry-mcp"
 path = "src/main.rs"
 
 [dependencies]

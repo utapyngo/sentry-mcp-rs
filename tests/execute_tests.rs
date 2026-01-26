@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use sentry_rs::api_client::{
+use sentry_mcp::api_client::{
     Event, EventTag, EventsQuery, Issue, IssueTag, Project, SentryApi, TraceResponse,
     TraceTransaction,
 };
-use sentry_rs::tools::get_issue_details::{GetIssueDetailsInput, execute as execute_get_issue};
-use sentry_rs::tools::get_trace_details::{GetTraceDetailsInput, execute as execute_get_trace};
-use sentry_rs::tools::search_issue_events::{SearchIssueEventsInput, execute as execute_search};
+use sentry_mcp::tools::get_issue_details::{GetIssueDetailsInput, execute as execute_get_issue};
+use sentry_mcp::tools::get_trace_details::{GetTraceDetailsInput, execute as execute_get_trace};
+use sentry_mcp::tools::search_issue_events::{SearchIssueEventsInput, execute as execute_search};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct MockSentryClient {

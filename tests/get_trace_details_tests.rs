@@ -1,5 +1,5 @@
-use sentry_rs::api_client::{TraceResponse, TraceTransaction};
-use sentry_rs::tools::get_trace_details::{
+use sentry_mcp::api_client::{TraceResponse, TraceTransaction};
+use sentry_mcp::tools::get_trace_details::{
     collect_operations, format_duration, format_span_tree, format_trace_output,
 };
 use serde_json::json;

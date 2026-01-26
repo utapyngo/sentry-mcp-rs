@@ -1,5 +1,5 @@
-use sentry_rs::api_client::{Event, EventEntry, EventTag};
-use sentry_rs::tools::search_issue_events::format_events_output;
+use sentry_mcp::api_client::{Event, EventEntry, EventTag};
+use sentry_mcp::tools::search_issue_events::format_events_output;
 use serde_json::json;
 
 fn make_event(

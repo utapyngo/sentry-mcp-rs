@@ -157,8 +157,7 @@ pub fn parse_issue_url(url: &str) -> Option<(String, String)> {
     Some((caps[1].to_string(), caps[2].to_string()))
 }
 
-pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_client::Event) -> String {
-    let mut output = String::new();
+fn format_issue_header(output: &mut String, issue: &crate::api_client::Issue) {
     output.push_str("# Issue Details\n\n");
     output.push_str(&format!("**ID:** {}\n", issue.short_id));
     output.push_str(&format!("**Title:** {}\n", issue.title));
@@ -201,6 +200,9 @@ pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_
             ));
         }
     }
+}
+
+fn format_event_section(output: &mut String, event: &crate::api_client::Event) {
     output.push_str("\n## Latest Event\n\n");
     output.push_str(&format!("**Event ID:** {}\n", event.event_id));
     if let Some(date) = &event.date_created {
@@ -209,7 +211,7 @@ pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_
     if let Some(msg) = &event.message {
         output.push_str(&format!("**Message:** {}\n", msg));
     }
-    format_event_entries(&mut output, &event.entries);
+    format_event_entries(output, &event.entries);
     if !event.tags.is_empty() {
         output.push_str("\n### Event Tags\n");
         for tag in &event.tags {
@@ -219,13 +221,19 @@ pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_
     if let Some(extra) = event.context.as_object()
         && !extra.is_empty()
     {
-        format_extra_data(&mut output, extra);
+        format_extra_data(output, extra);
     }
     if let Some(contexts) = event.contexts.as_object()
         && !contexts.is_empty()
     {
-        format_contexts(&mut output, contexts);
+        format_contexts(output, contexts);
     }
+}
+
+pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_client::Event) -> String {
+    let mut output = String::new();
+    format_issue_header(&mut output, issue);
+    format_event_section(&mut output, event);
     output
 }
 
