@@ -79,8 +79,8 @@ pub struct Event {
     pub id: String,
     #[serde(rename = "eventID")]
     pub event_id: String,
-    #[serde(rename = "dateCreated")]
-    pub date_created: String,
+    #[serde(rename = "dateCreated", default)]
+    pub date_created: Option<String>,
     #[serde(default)]
     pub message: Option<String>,
     #[serde(default)]

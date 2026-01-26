@@ -32,7 +32,9 @@ pub fn format_events_output(issue_id: &str, query: Option<&str>, events: &[Event
     output.push_str(&format!("**Found:** {} events\n\n", events.len()));
     for (i, event) in events.iter().enumerate() {
         output.push_str(&format!("## Event {} - {}\n\n", i + 1, event.event_id));
-        output.push_str(&format!("**Date:** {}\n", event.date_created));
+        if let Some(date) = &event.date_created {
+            output.push_str(&format!("**Date:** {}\n", date));
+        }
         if let Some(platform) = &event.platform {
             output.push_str(&format!("**Platform:** {}\n", platform));
         }

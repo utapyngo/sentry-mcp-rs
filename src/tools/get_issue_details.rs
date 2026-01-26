@@ -203,7 +203,9 @@ pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_
     }
     output.push_str("\n## Latest Event\n\n");
     output.push_str(&format!("**Event ID:** {}\n", event.event_id));
-    output.push_str(&format!("**Date:** {}\n", event.date_created));
+    if let Some(date) = &event.date_created {
+        output.push_str(&format!("**Date:** {}\n", date));
+    }
     if let Some(msg) = &event.message {
         output.push_str(&format!("**Message:** {}\n", msg));
     }

@@ -104,7 +104,7 @@ fn test_event_deserialize_minimal() {
     let event: Event = serde_json::from_value(json).unwrap();
     assert_eq!(event.id, "abc123");
     assert_eq!(event.event_id, "abc123");
-    assert_eq!(event.date_created, "2024-01-01T00:00:00Z");
+    assert_eq!(event.date_created, Some("2024-01-01T00:00:00Z".to_string()));
     assert!(event.message.is_none());
     assert!(event.entries.is_empty());
 }

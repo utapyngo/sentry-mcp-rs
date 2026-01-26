@@ -93,7 +93,7 @@ fn make_event(id: &str) -> Event {
     Event {
         id: id.to_string(),
         event_id: id.to_string(),
-        date_created: "2024-01-01T12:00:00Z".to_string(),
+        date_created: Some("2024-01-01T12:00:00Z".to_string()),
         message: Some("Test message".to_string()),
         platform: Some("rust".to_string()),
         tags: vec![EventTag {

@@ -315,7 +315,7 @@ fn create_test_event() -> Event {
     Event {
         id: "abc123".to_string(),
         event_id: "abc123".to_string(),
-        date_created: "2024-01-02T00:00:00Z".to_string(),
+        date_created: Some("2024-01-02T00:00:00Z".to_string()),
         message: Some("Test message".to_string()),
         platform: Some("python".to_string()),
         entries: vec![],

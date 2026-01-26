@@ -13,7 +13,7 @@ fn make_event(
     Event {
         id: "id".to_string(),
         event_id: event_id.to_string(),
-        date_created: date.to_string(),
+        date_created: Some(date.to_string()),
         message: message.map(|s| s.to_string()),
         platform: platform.map(|s| s.to_string()),
         entries,
