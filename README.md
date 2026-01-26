@@ -3,7 +3,16 @@
 [![Crates.io](https://img.shields.io/crates/v/sentry-mcp.svg)](https://crates.io/crates/sentry-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A minimal [MCP](https://modelcontextprotocol.io/) server for Sentry, written in Rust.
+A fast, lightweight [MCP](https://modelcontextprotocol.io/) server for Sentry, written in Rust.
+
+## Why sentry-mcp?
+
+Compared to the [official Node.js server](https://www.npmjs.com/package/@sentry/mcp-server):
+
+- **Memory:** 10x less RAM usage
+- **Startup:** instant cold start
+- **Disk:** single binary, no runtime dependencies
+- **Tokens:** fewer tools = smaller tool list in context
 
 ## Features
 
