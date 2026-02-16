@@ -1,23 +1,25 @@
 use async_trait::async_trait;
 use sentry_mcp::api_client::{
-    Event, EventTag, EventsQuery, Issue, IssueTag, Project, SentryApi, TraceResponse,
-    TraceTransaction,
+    Event, EventTag, EventsQuery, Issue, IssueTag, Project, SentryApi, TraceMeta, TraceSpan,
 };
 use sentry_mcp::tools::get_issue_details::{GetIssueDetailsInput, execute as execute_get_issue};
 use sentry_mcp::tools::get_trace_details::{GetTraceDetailsInput, execute as execute_get_trace};
 use sentry_mcp::tools::search_issue_events::{SearchIssueEventsInput, execute as execute_search};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct MockSentryClient {
     issue: Option<Issue>,
     event: Option<Event>,
-    trace: Option<TraceResponse>,
+    trace: Option<Vec<TraceSpan>>,
+    trace_meta: Option<TraceMeta>,
     events: Vec<Event>,
     error: Option<String>,
     get_issue_calls: AtomicUsize,
     get_event_calls: AtomicUsize,
     get_latest_event_calls: AtomicUsize,
     get_trace_calls: AtomicUsize,
+    get_trace_meta_calls: AtomicUsize,
     list_events_calls: AtomicUsize,
 }
 
@@ -27,12 +29,14 @@ impl MockSentryClient {
             issue: None,
             event: None,
             trace: None,
+            trace_meta: None,
             events: vec![],
             error: None,
             get_issue_calls: AtomicUsize::new(0),
             get_event_calls: AtomicUsize::new(0),
             get_latest_event_calls: AtomicUsize::new(0),
             get_trace_calls: AtomicUsize::new(0),
+            get_trace_meta_calls: AtomicUsize::new(0),
             list_events_calls: AtomicUsize::new(0),
         }
     }
@@ -44,7 +48,7 @@ impl MockSentryClient {
         self.event = Some(event);
         self
     }
-    fn with_trace(mut self, trace: TraceResponse) -> Self {
+    fn with_trace(mut self, trace: Vec<TraceSpan>) -> Self {
         self.trace = Some(trace);
         self
     }
@@ -106,31 +110,28 @@ fn make_event(id: &str) -> Event {
     }
 }
 
-fn make_trace() -> TraceResponse {
-    TraceResponse {
-        transactions: vec![TraceTransaction {
-            event_id: "tx1".to_string(),
-            transaction: "test-transaction".to_string(),
-            project_id: 1,
-            project_slug: "test-project".to_string(),
-            start_timestamp: 1000.0,
-            timestamp: 1001.0,
-            sdk_name: None,
-            children: vec![],
-            errors: vec![],
-            span_id: Some("abc123".to_string()),
-            parent_span_id: None,
-            span_op: Some("http.server".to_string()),
-            span_duration: Some(1000.0),
-            span_description: Some("GET /api/test".to_string()),
-            span_status: Some("ok".to_string()),
-            parent_event_id: None,
-            generation: 0,
-            profiler_id: None,
-            performance_issues: vec![],
-        }],
-        orphan_errors: vec![],
-    }
+fn make_trace() -> Vec<TraceSpan> {
+    vec![TraceSpan {
+        event_id: "tx1".to_string(),
+        transaction_id: Some("tx1-id".to_string()),
+        project_id: 1,
+        project_slug: "test-project".to_string(),
+        profile_id: None,
+        profiler_id: None,
+        parent_span_id: None,
+        start_timestamp: 1000.0,
+        end_timestamp: 1001.0,
+        duration: 1000.0,
+        transaction: Some("test-transaction".to_string()),
+        is_transaction: true,
+        description: Some("GET /api/test".to_string()),
+        sdk_name: None,
+        op: Some("http.server".to_string()),
+        name: Some("http.server".to_string()),
+        children: vec![],
+        errors: vec![],
+        occurrences: vec![],
+    }]
 }
 
 #[async_trait]
@@ -167,7 +168,7 @@ impl SentryApi for MockSentryClient {
             .clone()
             .ok_or_else(|| anyhow::anyhow!("Event not found"))
     }
-    async fn get_trace(&self, _org_slug: &str, _trace_id: &str) -> anyhow::Result<TraceResponse> {
+    async fn get_trace(&self, _org_slug: &str, _trace_id: &str) -> anyhow::Result<Vec<TraceSpan>> {
         self.get_trace_calls.fetch_add(1, Ordering::SeqCst);
         if let Some(err) = &self.error {
             return Err(anyhow::anyhow!("{}", err));
@@ -175,6 +176,19 @@ impl SentryApi for MockSentryClient {
         self.trace
             .clone()
             .ok_or_else(|| anyhow::anyhow!("Trace not found"))
+    }
+    async fn get_trace_meta(&self, _org_slug: &str, _trace_id: &str) -> anyhow::Result<TraceMeta> {
+        self.get_trace_meta_calls.fetch_add(1, Ordering::SeqCst);
+        if let Some(err) = &self.error {
+            return Err(anyhow::anyhow!("{}", err));
+        }
+        Ok(self.trace_meta.clone().unwrap_or(TraceMeta {
+            logs: 0,
+            errors: 0,
+            performance_issues: 0,
+            span_count: 0.0,
+            span_count_map: HashMap::new(),
+        }))
     }
     async fn list_events_for_issue(
         &self,

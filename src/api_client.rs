@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use tracing::info;
 
@@ -14,7 +15,8 @@ pub trait SentryApi: Send + Sync {
         issue_id: &str,
         event_id: &str,
     ) -> anyhow::Result<Event>;
-    async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceResponse>;
+    async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<Vec<TraceSpan>>;
+    async fn get_trace_meta(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceMeta>;
     async fn list_events_for_issue(
         &self,
         org_slug: &str,
@@ -116,42 +118,55 @@ pub struct EventEntry {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct TraceResponse {
-    pub transactions: Vec<TraceTransaction>,
+#[allow(dead_code)]
+pub struct TraceSpan {
+    pub event_id: String,
     #[serde(default)]
-    pub orphan_errors: Vec<serde_json::Value>,
+    pub transaction_id: Option<String>,
+    pub project_id: i64,
+    pub project_slug: String,
+    #[serde(default)]
+    pub profile_id: Option<String>,
+    #[serde(default)]
+    pub profiler_id: Option<String>,
+    pub parent_span_id: Option<String>,
+    pub start_timestamp: f64,
+    #[serde(default)]
+    pub end_timestamp: f64,
+    pub duration: f64,
+    #[serde(default)]
+    pub transaction: Option<String>,
+    #[serde(default)]
+    pub is_transaction: bool,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub sdk_name: Option<String>,
+    #[serde(default)]
+    pub op: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub children: Vec<TraceSpan>,
+    #[serde(default)]
+    pub errors: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub occurrences: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
-pub struct TraceTransaction {
-    pub event_id: String,
-    pub project_id: i64,
-    pub project_slug: String,
-    pub transaction: String,
-    pub start_timestamp: f64,
-    pub sdk_name: Option<String>,
-    pub timestamp: f64,
+pub struct TraceMeta {
     #[serde(default)]
-    pub children: Vec<TraceTransaction>,
+    pub logs: i64,
     #[serde(default)]
-    pub errors: Vec<serde_json::Value>,
-    pub span_id: Option<String>,
-    pub parent_span_id: Option<String>,
-    pub parent_event_id: Option<String>,
+    pub errors: i64,
     #[serde(default)]
-    pub generation: i32,
-    pub profiler_id: Option<String>,
+    pub performance_issues: i64,
     #[serde(default)]
-    pub performance_issues: Vec<serde_json::Value>,
-    #[serde(rename = "transaction.op")]
-    pub span_op: Option<String>,
-    #[serde(rename = "transaction.duration")]
-    pub span_duration: Option<f64>,
+    pub span_count: f64,
     #[serde(default)]
-    pub span_description: Option<String>,
-    #[serde(default)]
-    pub span_status: Option<String>,
+    pub span_count_map: HashMap<String, f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -258,9 +273,9 @@ impl SentryApi for SentryApiClient {
         }
         Ok(resp.json().await?)
     }
-    async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceResponse> {
+    async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<Vec<TraceSpan>> {
         let url = format!(
-            "{}/organizations/{}/events-trace/{}/?limit=100&useSpans=1",
+            "{}/organizations/{}/trace/{}/?limit=100&project=-1&statsPeriod=14d",
             self.base_url, org_slug, trace_id
         );
         info!("GET {}", url);
@@ -269,6 +284,20 @@ impl SentryApi for SentryApiClient {
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             anyhow::bail!("Failed to get trace: {} - {}", status, text);
+        }
+        Ok(resp.json().await?)
+    }
+    async fn get_trace_meta(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceMeta> {
+        let url = format!(
+            "{}/organizations/{}/trace-meta/{}/?statsPeriod=14d",
+            self.base_url, org_slug, trace_id
+        );
+        info!("GET {}", url);
+        let resp = self.client.get(&url).send().await?;
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            anyhow::bail!("Failed to get trace meta: {} - {}", status, text);
         }
         Ok(resp.json().await?)
     }
@@ -405,26 +434,53 @@ mod tests {
     #[tokio::test]
     async fn test_get_trace_success() {
         let mock_server = MockServer::start().await;
-        let response = r#"{
-            "transactions": [{
-                "event_id": "tx1",
+        let response = r#"[{
+                "event_id": "91958dc2ae005f54",
+                "transaction_id": "tx1",
                 "project_id": 1,
                 "project_slug": "test",
-                "transaction": "GET /api",
+                "parent_span_id": null,
                 "start_timestamp": 1704067200.0,
-                "timestamp": 1704067201.0
-            }],
-            "orphan_errors": []
-        }"#;
+                "end_timestamp": 1704067201.0,
+                "duration": 1000.0,
+                "transaction": "GET /api",
+                "is_transaction": true,
+                "description": "GET /api",
+                "op": "http.server",
+                "children": []
+        }]"#;
         Mock::given(method("GET"))
-            .and(path("/organizations/test-org/events-trace/trace123/"))
+            .and(path("/organizations/test-org/trace/trace123/"))
             .respond_with(ResponseTemplate::new(200).set_body_string(response))
             .mount(&mock_server)
             .await;
         let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
-        let trace = client.get_trace("test-org", "trace123").await.unwrap();
-        assert_eq!(trace.transactions.len(), 1);
-        assert_eq!(trace.transactions[0].transaction, "GET /api");
+        let spans = client.get_trace("test-org", "trace123").await.unwrap();
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].transaction.as_deref(), Some("GET /api"));
+        assert!(spans[0].is_transaction);
+    }
+    #[tokio::test]
+    async fn test_get_trace_meta_success() {
+        let mock_server = MockServer::start().await;
+        let response = r#"{
+            "logs": 0,
+            "errors": 2,
+            "performance_issues": 1,
+            "span_count": 100.0,
+            "span_count_map": {"db": 50.0, "http": 30.0}
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/organizations/test-org/trace-meta/trace123/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+        let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
+        let meta = client.get_trace_meta("test-org", "trace123").await.unwrap();
+        assert_eq!(meta.errors, 2);
+        assert_eq!(meta.performance_issues, 1);
+        assert_eq!(meta.span_count, 100.0);
+        assert_eq!(meta.span_count_map.get("db"), Some(&50.0));
     }
     #[tokio::test]
     async fn test_list_events_for_issue_success() {
