@@ -36,10 +36,14 @@ fn make_tx(
         errors: vec![],
         span_id: Some("span1".to_string()),
         parent_span_id: None,
+        parent_event_id: None,
+        generation: 0,
+        profiler_id: None,
+        performance_issues: vec![],
         span_op: op.map(|s| s.to_string()),
+        span_duration: duration,
         span_description: Some("test description".to_string()),
         span_status: Some("ok".to_string()),
-        span_duration: duration,
     }
 }
 
@@ -110,20 +114,20 @@ fn test_format_span_tree_with_depth() {
 }
 
 #[test]
+fn test_format_span_tree_unknown_op() {
+    let tx = make_tx(None, Some(100.0), vec![]);
+    let mut output = String::new();
+    format_span_tree(&tx, 0, &mut output);
+    assert!(output.contains("unknown"));
+}
+
+#[test]
 fn test_format_span_tree_error_status() {
     let mut tx = make_tx(Some("http"), Some(100.0), vec![]);
     tx.span_status = Some("internal_error".to_string());
     let mut output = String::new();
     format_span_tree(&tx, 0, &mut output);
     assert!(output.contains("✗"));
-}
-
-#[test]
-fn test_format_span_tree_unknown_op() {
-    let tx = make_tx(None, Some(100.0), vec![]);
-    let mut output = String::new();
-    format_span_tree(&tx, 0, &mut output);
-    assert!(output.contains("unknown"));
 }
 
 #[test]
@@ -259,10 +263,10 @@ fn test_format_span_tree_deep_nesting() {
     format_span_tree(&root, 0, &mut output);
     let lines: Vec<&str> = output.lines().collect();
     assert_eq!(lines.len(), 4);
-    assert!(lines[0].starts_with("✓"));
-    assert!(lines[1].starts_with("  ✓"));
-    assert!(lines[2].starts_with("    ✓"));
-    assert!(lines[3].starts_with("      ✓"));
+    assert!(lines[0].starts_with("✓ [root]"));
+    assert!(lines[1].starts_with("  ✓ [level1]"));
+    assert!(lines[2].starts_with("    ✓ [level2]"));
+    assert!(lines[3].starts_with("      ✓ [level3]"));
 }
 
 #[test]

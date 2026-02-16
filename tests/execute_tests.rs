@@ -124,6 +124,10 @@ fn make_trace() -> TraceResponse {
             span_duration: Some(1000.0),
             span_description: Some("GET /api/test".to_string()),
             span_status: Some("ok".to_string()),
+            parent_event_id: None,
+            generation: 0,
+            profiler_id: None,
+            performance_issues: vec![],
         }],
         orphan_errors: vec![],
     }

@@ -178,9 +178,9 @@ fn test_trace_response_deserialize_empty() {
 #[test]
 fn test_trace_transaction_deserialize_minimal() {
     let json = json!({
-        "eventId": "abc123",
-        "projectId": 1,
-        "projectSlug": "proj",
+        "event_id": "abc123",
+        "project_id": 1,
+        "project_slug": "proj",
         "transaction": "test-tx",
         "start_timestamp": 1000.0,
         "timestamp": 1001.0
@@ -197,29 +197,25 @@ fn test_trace_transaction_deserialize_minimal() {
 #[test]
 fn test_trace_transaction_deserialize_full() {
     let json = json!({
-        "eventId": "abc123",
-        "projectId": 1,
-        "projectSlug": "proj",
+        "event_id": "abc123",
+        "project_id": 1,
+        "project_slug": "proj",
         "transaction": "test-tx",
         "start_timestamp": 1000.0,
-        "sdk.name": "sentry.python",
+        "sdk_name": "sentry.python",
         "timestamp": 1001.0,
         "children": [],
         "errors": [{"title": "Error"}],
-        "spanId": "span1",
-        "parentSpanId": "span0",
-        "span.op": "http.request",
-        "span.description": "GET /api",
-        "span.status": "ok",
-        "span.duration": 150.5
+        "span_id": "span1",
+        "parent_span_id": "span0",
+        "transaction.op": "http.request",
+        "transaction.duration": 150.5
     });
     let tx: TraceTransaction = serde_json::from_value(json).unwrap();
     assert_eq!(tx.sdk_name.as_deref(), Some("sentry.python"));
     assert_eq!(tx.span_id.as_deref(), Some("span1"));
     assert_eq!(tx.parent_span_id.as_deref(), Some("span0"));
     assert_eq!(tx.span_op.as_deref(), Some("http.request"));
-    assert_eq!(tx.span_description.as_deref(), Some("GET /api"));
-    assert_eq!(tx.span_status.as_deref(), Some("ok"));
     assert_eq!(tx.span_duration, Some(150.5));
     assert_eq!(tx.errors.len(), 1);
 }
@@ -227,16 +223,16 @@ fn test_trace_transaction_deserialize_full() {
 #[test]
 fn test_trace_transaction_with_children() {
     let json = json!({
-        "eventId": "parent",
-        "projectId": 1,
-        "projectSlug": "proj",
+        "event_id": "parent",
+        "project_id": 1,
+        "project_slug": "proj",
         "transaction": "parent-tx",
         "start_timestamp": 1000.0,
         "timestamp": 1001.0,
         "children": [{
-            "eventId": "child",
-            "projectId": 1,
-            "projectSlug": "proj",
+            "event_id": "child",
+            "project_id": 1,
+            "project_slug": "proj",
             "transaction": "child-tx",
             "start_timestamp": 1000.1,
             "timestamp": 1000.5,
@@ -247,4 +243,34 @@ fn test_trace_transaction_with_children() {
     assert_eq!(tx.children.len(), 1);
     assert_eq!(tx.children[0].event_id, "child");
     assert_eq!(tx.children[0].transaction, "child-tx");
+}
+
+#[test]
+fn test_trace_transaction_actual_api_format() {
+    let json = json!({
+        "event_id": "4ff9a0a8138a447c9e0572a2eeff55d8",
+        "span_id": "91958dc2ae005f54",
+        "timestamp": 1771164551.832868,
+        "transaction": "/api/wf__model__doc_type/pk/",
+        "transaction.duration": 326,
+        "transaction.op": "http.server",
+        "project_id": 19,
+        "project_slug": "platform_test_project",
+        "parent_span_id": null,
+        "parent_event_id": null,
+        "generation": 0,
+        "errors": [],
+        "performance_issues": [],
+        "start_timestamp": 1771164551.506479,
+        "sdk_name": "sentry.python.django",
+        "profiler_id": null,
+        "children": []
+    });
+    let tx: TraceTransaction = serde_json::from_value(json).unwrap();
+    assert_eq!(tx.event_id, "4ff9a0a8138a447c9e0572a2eeff55d8");
+    assert_eq!(tx.project_id, 19);
+    assert_eq!(tx.project_slug, "platform_test_project");
+    assert_eq!(tx.span_op.as_deref(), Some("http.server"));
+    assert_eq!(tx.span_duration, Some(326.0));
+    assert_eq!(tx.sdk_name.as_deref(), Some("sentry.python.django"));
 }

@@ -123,16 +123,13 @@ pub struct TraceResponse {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct TraceTransaction {
     pub event_id: String,
     pub project_id: i64,
     pub project_slug: String,
     pub transaction: String,
-    #[serde(rename = "start_timestamp")]
     pub start_timestamp: f64,
-    #[serde(rename = "sdk.name")]
     pub sdk_name: Option<String>,
     pub timestamp: f64,
     #[serde(default)]
@@ -141,14 +138,20 @@ pub struct TraceTransaction {
     pub errors: Vec<serde_json::Value>,
     pub span_id: Option<String>,
     pub parent_span_id: Option<String>,
-    #[serde(rename = "span.op")]
+    pub parent_event_id: Option<String>,
+    #[serde(default)]
+    pub generation: i32,
+    pub profiler_id: Option<String>,
+    #[serde(default)]
+    pub performance_issues: Vec<serde_json::Value>,
+    #[serde(rename = "transaction.op")]
     pub span_op: Option<String>,
-    #[serde(rename = "span.description")]
-    pub span_description: Option<String>,
-    #[serde(rename = "span.status")]
-    pub span_status: Option<String>,
-    #[serde(rename = "span.duration")]
+    #[serde(rename = "transaction.duration")]
     pub span_duration: Option<f64>,
+    #[serde(default)]
+    pub span_description: Option<String>,
+    #[serde(default)]
+    pub span_status: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -404,9 +407,9 @@ mod tests {
         let mock_server = MockServer::start().await;
         let response = r#"{
             "transactions": [{
-                "eventId": "tx1",
-                "projectId": 1,
-                "projectSlug": "test",
+                "event_id": "tx1",
+                "project_id": 1,
+                "project_slug": "test",
                 "transaction": "GET /api",
                 "start_timestamp": 1704067200.0,
                 "timestamp": 1704067201.0
