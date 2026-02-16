@@ -38,7 +38,11 @@ pub fn format_span_tree(tx: &TraceTransaction, depth: usize, output: &mut String
     let op = tx.span_op.as_deref().unwrap_or("unknown");
     let desc = tx.span_description.as_deref().unwrap_or(&tx.transaction);
     let status = tx.span_status.as_deref().unwrap_or("ok");
-    let status_icon = if status == "ok" || status == "unknown" { "✓" } else { "✗" };
+    let status_icon = if status == "ok" || status == "unknown" {
+        "✓"
+    } else {
+        "✗"
+    };
     output.push_str(&format!(
         "{}{} [{}] {} ({}) {}\n",
         indent, status_icon, op, desc, duration, tx.project_slug
@@ -53,7 +57,10 @@ pub fn format_trace_output(trace_id: &str, trace: &TraceResponse) -> String {
     output.push_str("# Trace Details\n\n");
     output.push_str(&format!("**Trace ID:** {}\n", trace_id));
     output.push_str(&format!("**Transactions:** {}\n", trace.transactions.len()));
-    output.push_str(&format!("**Orphan Errors:** {}\n", trace.orphan_errors.len()));
+    output.push_str(&format!(
+        "**Orphan Errors:** {}\n",
+        trace.orphan_errors.len()
+    ));
     if let Some(root) = trace.transactions.first() {
         let start = root.start_timestamp;
         let end = trace
@@ -75,7 +82,7 @@ pub fn format_trace_output(trace_id: &str, trace: &TraceResponse) -> String {
     if !ops.is_empty() {
         output.push_str("\n## Operation Breakdown\n\n");
         let mut ops_vec: Vec<_> = ops.into_iter().collect();
-        ops_vec.sort_by(|a, b| b.1 .1.partial_cmp(&a.1 .1).unwrap());
+        ops_vec.sort_by(|a, b| b.1.1.partial_cmp(&a.1.1).unwrap());
         for (op, (count, total_ms)) in ops_vec {
             output.push_str(&format!(
                 "- **{}**: {} occurrences, {} total\n",
@@ -116,5 +123,7 @@ pub async fn execute(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
     let output = format_trace_output(&input.trace_id, &trace);
-    Ok(CallToolResult::success(vec![rmcp::model::Content::text(output)]))
+    Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+        output,
+    )]))
 }

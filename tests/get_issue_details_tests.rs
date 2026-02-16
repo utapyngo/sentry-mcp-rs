@@ -72,12 +72,11 @@ fn test_format_extra_data_with_array() {
 #[test]
 fn test_format_contexts_simple() {
     let mut output = String::new();
-    let contexts: serde_json::Map<String, serde_json::Value> =
-        serde_json::from_value(json!({
-            "browser": {"name": "Chrome", "version": "120.0"},
-            "os": {"name": "Linux"}
-        }))
-        .unwrap();
+    let contexts: serde_json::Map<String, serde_json::Value> = serde_json::from_value(json!({
+        "browser": {"name": "Chrome", "version": "120.0"},
+        "os": {"name": "Linux"}
+    }))
+    .unwrap();
     format_contexts(&mut output, &contexts);
     assert!(output.contains("### Context"));
     assert!(output.contains("**browser:**"));
@@ -87,11 +86,10 @@ fn test_format_contexts_simple() {
 #[test]
 fn test_format_contexts_nested() {
     let mut output = String::new();
-    let contexts: serde_json::Map<String, serde_json::Value> =
-        serde_json::from_value(json!({
-            "runtime": {"name": "python", "version": "3.11.0"}
-        }))
-        .unwrap();
+    let contexts: serde_json::Map<String, serde_json::Value> = serde_json::from_value(json!({
+        "runtime": {"name": "python", "version": "3.11.0"}
+    }))
+    .unwrap();
     format_contexts(&mut output, &contexts);
     assert!(output.contains("**runtime:**"));
     assert!(output.contains("python"));
@@ -293,19 +291,17 @@ fn create_test_issue(project: Project) -> Issue {
         level: Some("error".to_string()),
         platform: Some("python".to_string()),
         project,
-        first_seen: "2024-01-01T00:00:00Z".to_string(),
-        last_seen: "2024-01-02T00:00:00Z".to_string(),
+        first_seen: Some("2024-01-01T00:00:00Z".to_string()),
+        last_seen: Some("2024-01-02T00:00:00Z".to_string()),
         count: "42".to_string(),
         user_count: 10,
         permalink: Some("https://sentry.io/issues/123".to_string()),
         metadata: json!({"value": "KeyError: 'foo'"}),
-        tags: vec![
-            IssueTag {
-                key: "environment".to_string(),
-                name: "Environment".to_string(),
-                total_values: 2,
-            },
-        ],
+        tags: vec![IssueTag {
+            key: "environment".to_string(),
+            name: "Environment".to_string(),
+            total_values: 2,
+        }],
         issue_type: Some("error".to_string()),
         issue_category: Some("error".to_string()),
     }
@@ -321,12 +317,10 @@ fn create_test_event() -> Event {
         entries: vec![],
         contexts: json!({}),
         context: json!({}),
-        tags: vec![
-            EventTag {
-                key: "browser".to_string(),
-                value: "Chrome".to_string(),
-            },
-        ],
+        tags: vec![EventTag {
+            key: "browser".to_string(),
+            value: "Chrome".to_string(),
+        }],
     }
 }
 
@@ -335,7 +329,7 @@ fn test_format_issue_output_basic() {
     let project = create_test_project();
     let issue = create_test_issue(project);
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("# Issue Details"));
     assert!(output.contains("**ID:** TEST-1"));
     assert!(output.contains("**Title:** Test Issue"));
@@ -353,7 +347,7 @@ fn test_format_issue_output_with_culprit() {
     let project = create_test_project();
     let issue = create_test_issue(project);
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("**Culprit:** app.main"));
 }
 
@@ -362,7 +356,7 @@ fn test_format_issue_output_with_permalink() {
     let project = create_test_project();
     let issue = create_test_issue(project);
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("**URL:**"));
     assert!(output.contains("https://sentry.io/issues/123"));
 }
@@ -372,7 +366,7 @@ fn test_format_issue_output_with_issue_tags() {
     let project = create_test_project();
     let issue = create_test_issue(project);
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("## Tags"));
     assert!(output.contains("environment"));
     assert!(output.contains("Environment"));
@@ -383,7 +377,7 @@ fn test_format_issue_output_with_event_tags() {
     let project = create_test_project();
     let issue = create_test_issue(project);
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("### Event Tags"));
     assert!(output.contains("browser"));
     assert!(output.contains("Chrome"));
@@ -395,7 +389,7 @@ fn test_format_issue_output_no_culprit() {
     let mut issue = create_test_issue(project);
     issue.culprit = None;
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(!output.contains("**Culprit:**"));
 }
 
@@ -405,7 +399,7 @@ fn test_format_issue_output_no_substatus() {
     let mut issue = create_test_issue(project);
     issue.substatus = None;
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("**Status:** unresolved"));
     assert!(!output.contains("**Substatus:**"));
 }
@@ -416,7 +410,7 @@ fn test_format_issue_output_no_permalink() {
     let mut issue = create_test_issue(project);
     issue.permalink = None;
     let event = create_test_event();
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(!output.contains("**URL:**"));
 }
 
@@ -427,7 +421,7 @@ fn test_format_issue_output_empty_tags() {
     issue.tags = vec![];
     let mut event = create_test_event();
     event.tags = vec![];
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(!output.contains("## Tags"));
     assert!(!output.contains("### Event Tags"));
 }
@@ -441,7 +435,7 @@ fn test_format_issue_output_with_event_entries() {
         entry_type: "message".to_string(),
         data: json!({"formatted": "Test message content"}),
     }];
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("## Message"));
     assert!(output.contains("Test message content"));
 }
@@ -554,7 +548,7 @@ fn test_format_issue_output_with_contexts() {
     event.contexts = json!({
         "browser": {"name": "Firefox", "version": "120"}
     });
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("### Context"));
     assert!(output.contains("Firefox"));
 }
@@ -565,7 +559,7 @@ fn test_format_issue_output_with_extra_context() {
     let issue = create_test_issue(project);
     let mut event = create_test_event();
     event.context = json!({"custom_key": "custom_value"});
-    let output = format_issue_output(&issue, &event);
+    let output = format_issue_output(&issue, Some(&event));
     assert!(output.contains("### Extra Data"));
     assert!(output.contains("custom_key"));
 }

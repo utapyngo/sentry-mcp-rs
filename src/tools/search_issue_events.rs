@@ -9,12 +9,14 @@ pub struct SearchIssueEventsInput {
     pub organization_slug: String,
     #[schemars(description = "Issue ID like 'PROJECT-123' or numeric ID")]
     pub issue_id: String,
-    #[schemars(description = "Sentry search query. Syntax: key:value pairs with optional raw text. \
+    #[schemars(
+        description = "Sentry search query. Syntax: key:value pairs with optional raw text. \
         Operators: > < >= <= for numbers, ! for negation, * for wildcard, OR/AND for logic. \
         Event properties: environment, release, platform, message, user.id, user.email, \
         device.family, browser.name, os.name, server_name, transaction. \
         Examples: 'server_name:web-1', 'environment:production', '!user.email:*@test.com', \
-        'browser.name:Chrome OR browser.name:Firefox'")]
+        'browser.name:Chrome OR browser.name:Firefox'"
+    )]
     pub query: Option<String>,
     #[schemars(description = "Maximum number of events to return (default: 10, max: 100)")]
     pub limit: Option<i32>,
@@ -88,5 +90,7 @@ pub async fn execute(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
     let output = format_events_output(&input.issue_id, input.query.as_deref(), &events);
-    Ok(CallToolResult::success(vec![rmcp::model::Content::text(output)]))
+    Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+        output,
+    )]))
 }

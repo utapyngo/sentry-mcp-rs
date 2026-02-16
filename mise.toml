@@ -1,0 +1,11 @@
+[tools]
+rust = "stable"
+
+[tasks.lint]
+run = """
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+"""
+
+[tasks.build]
+run = "cargo build --release"

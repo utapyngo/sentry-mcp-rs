@@ -6,8 +6,7 @@ use crate::api_client::SentryApiClient;
 use get_issue_details::{GetIssueDetailsInput, execute as execute_get_issue_details};
 use get_trace_details::{GetTraceDetailsInput, execute as execute_get_trace_details};
 use rmcp::{
-    ErrorData as McpError,
-    ServerHandler,
+    ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::*,
     tool_handler, tool_router,
@@ -36,7 +35,9 @@ impl SentryTools {
             tool_router: Self::tool_router(),
         }
     }
-    #[rmcp::tool(description = "Retrieve detailed information about a specific Sentry issue including metadata, tags, and optionally an event. Accepts either an issueUrl OR (organizationSlug + issueId).")]
+    #[rmcp::tool(
+        description = "Retrieve detailed information about a specific Sentry issue including metadata, tags, and optionally an event. Accepts either an issueUrl OR (organizationSlug + issueId)."
+    )]
     async fn get_issue_details(
         &self,
         Parameters(input): Parameters<GetIssueDetailsInput>,
@@ -44,7 +45,9 @@ impl SentryTools {
         info!("get_issue_details: {:?}", input);
         execute_get_issue_details(&*self.client, input).await
     }
-    #[rmcp::tool(description = "Retrieve trace details including span tree and timing information. Useful for analyzing distributed system performance.")]
+    #[rmcp::tool(
+        description = "Retrieve trace details including span tree and timing information. Useful for analyzing distributed system performance."
+    )]
     async fn get_trace_details(
         &self,
         Parameters(input): Parameters<GetTraceDetailsInput>,
@@ -52,7 +55,9 @@ impl SentryTools {
         info!("get_trace_details: {:?}", input);
         execute_get_trace_details(&*self.client, input).await
     }
-    #[rmcp::tool(description = "Search events for a specific issue using a query string. Returns matching events with their details.")]
+    #[rmcp::tool(
+        description = "Search events for a specific issue using a query string. Returns matching events with their details."
+    )]
     async fn search_issue_events(
         &self,
         Parameters(input): Parameters<SearchIssueEventsInput>,

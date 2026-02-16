@@ -6,10 +6,19 @@ use serde::Deserialize;
 use serde_json::Value;
 
 pub fn format_frame_detail(output: &mut String, frame: &Value) {
-    let filename = frame.get("filename").and_then(|v| v.as_str()).unwrap_or("?");
+    let filename = frame
+        .get("filename")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
     let lineno = frame.get("lineNo").and_then(|v| v.as_i64()).unwrap_or(0);
-    let func = frame.get("function").and_then(|v| v.as_str()).unwrap_or("?");
-    output.push_str(&format!("─────────────────────\n  File \"{}\", line {}, in {}\n\n", filename, lineno, func));
+    let func = frame
+        .get("function")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    output.push_str(&format!(
+        "─────────────────────\n  File \"{}\", line {}, in {}\n\n",
+        filename, lineno, func
+    ));
     if let Some(context) = frame.get("context").and_then(|v| v.as_array()) {
         for line in context {
             if let Some(arr) = line.as_array()
@@ -60,9 +69,15 @@ pub fn format_exception(output: &mut String, exc: &Value) {
         }
         output.push_str("\n**Full Stacktrace:**\n────────────────\n```\n");
         for frame in frames_vec.iter().rev().take(20) {
-            let filename = frame.get("filename").and_then(|v| v.as_str()).unwrap_or("?");
+            let filename = frame
+                .get("filename")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
             let lineno = frame.get("lineNo").and_then(|v| v.as_i64()).unwrap_or(0);
-            let func = frame.get("function").and_then(|v| v.as_str()).unwrap_or("?");
+            let func = frame
+                .get("function")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
             let context_line = frame
                 .get("context")
                 .and_then(|v| v.as_array())
@@ -77,7 +92,10 @@ pub fn format_exception(output: &mut String, exc: &Value) {
                 .and_then(|arr| arr.get(1))
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            output.push_str(&format!("  File \"{}\", line {}, in {}\n", filename, lineno, func));
+            output.push_str(&format!(
+                "  File \"{}\", line {}, in {}\n",
+                filename, lineno, func
+            ));
             if !context_line.is_empty() {
                 output.push_str(&format!("        {}\n", context_line.trim()));
             }
@@ -145,7 +163,9 @@ pub struct GetIssueDetailsInput {
     pub issue_url: Option<String>,
     #[schemars(description = "Organization slug (required if issue_url not provided)")]
     pub organization_slug: Option<String>,
-    #[schemars(description = "Issue ID like 'PROJECT-123' or numeric ID (required if issue_url not provided)")]
+    #[schemars(
+        description = "Issue ID like 'PROJECT-123' or numeric ID (required if issue_url not provided)"
+    )]
     pub issue_id: Option<String>,
     #[schemars(description = "Specific event ID to fetch instead of latest")]
     pub event_id: Option<String>,
@@ -184,8 +204,12 @@ fn format_issue_header(output: &mut String, issue: &crate::api_client::Issue) {
     if let Some(platform) = &issue.platform {
         output.push_str(&format!("**Platform:** {}\n", platform));
     }
-    output.push_str(&format!("**First Seen:** {}\n", issue.first_seen));
-    output.push_str(&format!("**Last Seen:** {}\n", issue.last_seen));
+    if let Some(first_seen) = &issue.first_seen {
+        output.push_str(&format!("**First Seen:** {}\n", first_seen));
+    }
+    if let Some(last_seen) = &issue.last_seen {
+        output.push_str(&format!("**Last Seen:** {}\n", last_seen));
+    }
     output.push_str(&format!("**Event Count:** {}\n", issue.count));
     output.push_str(&format!("**User Count:** {}\n", issue.user_count));
     if let Some(permalink) = &issue.permalink {
@@ -230,10 +254,19 @@ fn format_event_section(output: &mut String, event: &crate::api_client::Event) {
     }
 }
 
-pub fn format_issue_output(issue: &crate::api_client::Issue, event: &crate::api_client::Event) -> String {
+pub fn format_issue_output(
+    issue: &crate::api_client::Issue,
+    event: Option<&crate::api_client::Event>,
+) -> String {
     let mut output = String::new();
     format_issue_header(&mut output, issue);
-    format_event_section(&mut output, event);
+    if let Some(event) = event {
+        format_event_section(&mut output, event);
+    } else {
+        output.push_str(
+            "\n## Event\nNo events available (may have expired due to retention policy).\n",
+        );
+    }
     output
 }
 
@@ -242,9 +275,8 @@ pub async fn execute(
     input: GetIssueDetailsInput,
 ) -> Result<CallToolResult, McpError> {
     let (org_slug, issue_id) = if let Some(url) = &input.issue_url {
-        parse_issue_url(url).ok_or_else(|| {
-            McpError::invalid_params("Invalid issue URL format", None)
-        })?
+        parse_issue_url(url)
+            .ok_or_else(|| McpError::invalid_params("Invalid issue URL format", None))?
     } else {
         let org = input.organization_slug.ok_or_else(|| {
             McpError::invalid_params(
@@ -265,16 +297,17 @@ pub async fn execute(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
     let event = if let Some(event_id) = &input.event_id {
-        client
-            .get_event(&org_slug, &issue_id, event_id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
+        Some(
+            client
+                .get_event(&org_slug, &issue_id, event_id)
+                .await
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?,
+        )
     } else {
-        client
-            .get_latest_event(&org_slug, &issue_id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
+        client.get_latest_event(&org_slug, &issue_id).await.ok()
     };
-    let output = format_issue_output(&issue, &event);
-    Ok(CallToolResult::success(vec![rmcp::model::Content::text(output)]))
+    let output = format_issue_output(&issue, event.as_ref());
+    Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+        output,
+    )]))
 }

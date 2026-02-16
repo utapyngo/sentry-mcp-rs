@@ -124,7 +124,14 @@ fn test_format_events_multiple_events() {
 
 #[test]
 fn test_format_events_empty_message_not_shown() {
-    let events = vec![make_event("e1", "2024-01-01", None, Some(""), vec![], vec![])];
+    let events = vec![make_event(
+        "e1",
+        "2024-01-01",
+        None,
+        Some(""),
+        vec![],
+        vec![],
+    )];
     let output = format_events_output("P-1", None, &events);
     assert!(!output.contains("**Message:**"));
 }
@@ -197,7 +204,14 @@ fn test_format_events_exception_no_values_key() {
 
 #[test]
 fn test_format_events_no_platform() {
-    let events = vec![make_event("e1", "2024-01-01", None, Some("msg"), vec![], vec![])];
+    let events = vec![make_event(
+        "e1",
+        "2024-01-01",
+        None,
+        Some("msg"),
+        vec![],
+        vec![],
+    )];
     let output = format_events_output("P-1", None, &events);
     assert!(!output.contains("**Platform:**"));
 }

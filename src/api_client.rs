@@ -8,9 +8,19 @@ use tracing::info;
 pub trait SentryApi: Send + Sync {
     async fn get_issue(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Issue>;
     async fn get_latest_event(&self, org_slug: &str, issue_id: &str) -> anyhow::Result<Event>;
-    async fn get_event(&self, org_slug: &str, issue_id: &str, event_id: &str) -> anyhow::Result<Event>;
+    async fn get_event(
+        &self,
+        org_slug: &str,
+        issue_id: &str,
+        event_id: &str,
+    ) -> anyhow::Result<Event>;
     async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceResponse>;
-    async fn list_events_for_issue(&self, org_slug: &str, issue_id: &str, query: &EventsQuery) -> anyhow::Result<Vec<Event>>;
+    async fn list_events_for_issue(
+        &self,
+        org_slug: &str,
+        issue_id: &str,
+        query: &EventsQuery,
+    ) -> anyhow::Result<Vec<Event>>;
 }
 
 pub struct SentryApiClient {
@@ -33,8 +43,10 @@ pub struct Issue {
     pub level: Option<String>,
     pub platform: Option<String>,
     pub project: Project,
-    pub first_seen: String,
-    pub last_seen: String,
+    #[serde(default)]
+    pub first_seen: Option<String>,
+    #[serde(default)]
+    pub last_seen: Option<String>,
     pub count: String,
     #[serde(rename = "userCount")]
     pub user_count: i64,
@@ -165,9 +177,10 @@ impl SentryApiClient {
                 builder = builder.proxy(proxy);
             }
         } else if let Ok(proxy_url) = env::var("HTTPS_PROXY").or_else(|_| env::var("https_proxy"))
-            && let Ok(proxy) = reqwest::Proxy::https(&proxy_url) {
-                builder = builder.proxy(proxy);
-            }
+            && let Ok(proxy) = reqwest::Proxy::https(&proxy_url)
+        {
+            builder = builder.proxy(proxy);
+        }
         let client = builder.build().expect("Failed to build HTTP client");
         Self { client, base_url }
     }
@@ -193,7 +206,11 @@ impl SentryApi for SentryApiClient {
         }
         let text = resp.text().await?;
         serde_json::from_str(&text).map_err(|e| {
-            tracing::error!("Failed to parse issue JSON: {}. Response: {}", e, &text[..500.min(text.len())]);
+            tracing::error!(
+                "Failed to parse issue JSON: {}. Response: {}",
+                e,
+                &text[..500.min(text.len())]
+            );
             anyhow::anyhow!("JSON parse error: {}", e)
         })
     }
@@ -211,7 +228,11 @@ impl SentryApi for SentryApiClient {
         }
         let text = resp.text().await?;
         serde_json::from_str(&text).map_err(|e| {
-            tracing::error!("Failed to parse event JSON: {}. Response: {}", e, &text[..1000.min(text.len())]);
+            tracing::error!(
+                "Failed to parse event JSON: {}. Response: {}",
+                e,
+                &text[..1000.min(text.len())]
+            );
             anyhow::anyhow!("JSON parse error: {}", e)
         })
     }
@@ -234,11 +255,7 @@ impl SentryApi for SentryApiClient {
         }
         Ok(resp.json().await?)
     }
-    async fn get_trace(
-        &self,
-        org_slug: &str,
-        trace_id: &str,
-    ) -> anyhow::Result<TraceResponse> {
+    async fn get_trace(&self, org_slug: &str, trace_id: &str) -> anyhow::Result<TraceResponse> {
         let url = format!(
             "{}/organizations/{}/events-trace/{}/?limit=100&useSpans=1",
             self.base_url, org_slug, trace_id
@@ -419,8 +436,15 @@ mod tests {
             .mount(&mock_server)
             .await;
         let client = SentryApiClient::with_base_url(Client::new(), mock_server.uri());
-        let query = EventsQuery { query: None, limit: Some(10), sort: None };
-        let events = client.list_events_for_issue("test-org", "123", &query).await.unwrap();
+        let query = EventsQuery {
+            query: None,
+            limit: Some(10),
+            sort: None,
+        };
+        let events = client
+            .list_events_for_issue("test-org", "123", &query)
+            .await
+            .unwrap();
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].event_id, "abc123");
         assert_eq!(events[1].event_id, "def456");
