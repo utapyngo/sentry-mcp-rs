@@ -80,7 +80,9 @@ fn collect_interesting(span: &TraceSpan, out: &mut Vec<TraceSpan>) {
     // (e.g., middleware chains where each middleware wraps the next)
     let dominated_skip = dominated_by_one_child && !span.is_transaction;
 
-    let is_interesting = span.is_transaction || !span.errors.is_empty() || span.duration >= MIN_INTERESTING_DURATION_MS;
+    let is_interesting = span.is_transaction
+        || !span.errors.is_empty()
+        || span.duration >= MIN_INTERESTING_DURATION_MS;
 
     if !dominated_skip && is_interesting {
         let mut filtered = span.clone();
@@ -147,7 +149,7 @@ pub fn format_trace_output(
         if !ops.is_empty() {
             output.push_str("\n## Operation Breakdown\n\n");
             let mut ops_vec: Vec<_> = ops.into_iter().collect();
-            ops_vec.sort_by(|a, b| b.1 .1.partial_cmp(&a.1 .1).unwrap());
+            ops_vec.sort_by(|a, b| b.1.1.partial_cmp(&a.1.1).unwrap());
             for (op, (count, total_ms)) in ops_vec {
                 output.push_str(&format!(
                     "- **{}**: {} occurrences, {} total\n",

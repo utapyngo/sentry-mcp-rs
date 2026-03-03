@@ -305,4 +305,3 @@ fn test_trace_meta_deserialize_minimal() {
     assert_eq!(meta.span_count, 0.0);
     assert!(meta.span_count_map.is_empty());
 }
-
