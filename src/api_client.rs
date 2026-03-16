@@ -72,7 +72,6 @@ pub struct Project {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct IssueTag {
     pub key: String,
     pub name: String,
