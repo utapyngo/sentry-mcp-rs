@@ -4,6 +4,7 @@ use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::Value;
+use std::sync::LazyLock;
 
 pub fn format_frame_detail(output: &mut String, frame: &Value) {
     let filename = frame
@@ -171,9 +172,11 @@ pub struct GetIssueDetailsInput {
     pub event_id: Option<String>,
 }
 
+static ISSUE_URL_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"https?://[^/]+/organizations/([^/]+)/issues/([^/?]+)").unwrap());
+
 pub fn parse_issue_url(url: &str) -> Option<(String, String)> {
-    let re = Regex::new(r"https?://[^/]+/organizations/([^/]+)/issues/([^/?]+)").ok()?;
-    let caps = re.captures(url)?;
+    let caps = ISSUE_URL_RE.captures(url)?;
     Some((caps[1].to_string(), caps[2].to_string()))
 }
 
