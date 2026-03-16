@@ -215,3 +215,89 @@ fn test_format_events_no_platform() {
     let output = format_events_output("P-1", None, &events);
     assert!(!output.contains("**Platform:**"));
 }
+
+#[test]
+fn test_format_events_all_optional_fields_missing() {
+    let event = Event {
+        id: "id".to_string(),
+        event_id: "evt-minimal".to_string(),
+        date_created: None,
+        message: None,
+        platform: None,
+        entries: vec![],
+        contexts: json!({}),
+        context: json!({}),
+        tags: vec![],
+    };
+    let output = format_events_output("P-1", None, &[event]);
+    assert!(output.contains("## Event 1 - evt-minimal"));
+    assert!(!output.contains("**Date:**"));
+    assert!(!output.contains("**Platform:**"));
+    assert!(!output.contains("**Message:**"));
+    assert!(!output.contains("**Tags:**"));
+    assert!(!output.contains("**Exception:**"));
+}
+
+#[test]
+fn test_format_events_long_message_fully_included() {
+    let long_msg = "E".repeat(5000);
+    let events = vec![make_event(
+        "e-long",
+        "2024-01-01",
+        None,
+        Some(&long_msg),
+        vec![],
+        vec![],
+    )];
+    let output = format_events_output("P-1", None, &events);
+    assert!(output.contains(&long_msg));
+}
+
+#[test]
+fn test_format_events_no_date_created() {
+    let event = Event {
+        id: "id".to_string(),
+        event_id: "evt-nodate".to_string(),
+        date_created: None,
+        message: Some("has message".to_string()),
+        platform: Some("node".to_string()),
+        entries: vec![],
+        contexts: json!({}),
+        context: json!({}),
+        tags: vec![],
+    };
+    let output = format_events_output("P-1", None, &[event]);
+    assert!(!output.contains("**Date:**"));
+    assert!(output.contains("**Message:** has message"));
+}
+
+#[test]
+fn test_format_events_exception_data_not_array() {
+    let entries = vec![EventEntry {
+        entry_type: "exception".to_string(),
+        data: json!({"values": "not-an-array"}),
+    }];
+    let events = vec![make_event("e1", "2024-01-01", None, None, vec![], entries)];
+    let output = format_events_output("P-1", None, &events);
+    assert!(!output.contains("**Exception:**"));
+}
+
+#[test]
+fn test_format_events_large_event_count() {
+    let events: Vec<Event> = (0..100)
+        .map(|i| {
+            make_event(
+                &format!("evt-{}", i),
+                "2024-01-01",
+                None,
+                None,
+                vec![],
+                vec![],
+            )
+        })
+        .collect();
+    let output = format_events_output("P-1", None, &events);
+    assert!(output.contains("**Found:** 100 events"));
+    assert!(output.contains("## Event 1 - evt-0"));
+    assert!(output.contains("## Event 100 - evt-99"));
+}

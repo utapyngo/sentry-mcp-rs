@@ -563,3 +563,56 @@ fn test_format_issue_output_with_extra_context() {
     assert!(output.contains("### Extra Data"));
     assert!(output.contains("custom_key"));
 }
+
+#[test]
+fn test_parse_issue_url_trailing_slash_no_id() {
+    let url = "https://sentry.io/organizations/myorg/issues/";
+    assert!(parse_issue_url(url).is_none());
+}
+
+#[test]
+fn test_parse_issue_url_no_trailing_slash_no_id() {
+    let url = "https://sentry.io/organizations/myorg/issues";
+    assert!(parse_issue_url(url).is_none());
+}
+
+#[test]
+fn test_parse_issue_url_extra_path_segments() {
+    let url = "https://sentry.io/organizations/myorg/issues/12345/events/latest/";
+    let (org, issue) = parse_issue_url(url).unwrap();
+    assert_eq!(org, "myorg");
+    assert_eq!(issue, "12345");
+}
+
+#[test]
+fn test_parse_issue_url_non_sentry_domain() {
+    let url = "https://github.com/myorg/repo/issues/123";
+    assert!(parse_issue_url(url).is_none());
+}
+
+#[test]
+fn test_parse_issue_url_http_scheme() {
+    let url = "http://sentry.example.com/organizations/corp/issues/555";
+    let (org, issue) = parse_issue_url(url).unwrap();
+    assert_eq!(org, "corp");
+    assert_eq!(issue, "555");
+}
+
+#[test]
+fn test_parse_issue_url_with_fragment() {
+    let url = "https://sentry.io/organizations/myorg/issues/12345/?stream_index=0#breadcrumbs";
+    let (org, issue) = parse_issue_url(url).unwrap();
+    assert_eq!(org, "myorg");
+    assert_eq!(issue, "12345");
+}
+
+#[test]
+fn test_parse_issue_url_empty_string() {
+    assert!(parse_issue_url("").is_none());
+}
+
+#[test]
+fn test_parse_issue_url_missing_org() {
+    let url = "https://sentry.io/organizations//issues/12345/";
+    assert!(parse_issue_url(url).is_none());
+}

@@ -256,3 +256,117 @@ fn test_format_trace_output_with_meta() {
     assert!(output.contains("## Operation Breakdown"));
     assert!(output.contains("**db**: 200"));
 }
+
+#[test]
+fn test_select_interesting_spans_empty() {
+    let result = select_interesting_spans(&[], 20);
+    assert!(result.is_empty());
+}
+
+#[test]
+fn test_select_interesting_spans_all_below_threshold() {
+    let spans: Vec<TraceSpan> = (0..5)
+        .map(|i| {
+            let mut s = make_span(Some("tiny"), (i as f64) + 1.0, vec![]);
+            s.is_transaction = false;
+            s
+        })
+        .collect();
+    let result = select_interesting_spans(&spans, 20);
+    assert!(result.is_empty());
+}
+
+#[test]
+fn test_select_interesting_spans_deep_nesting() {
+    // Each child takes ≥90% of parent duration → middleware spans are "dominated"
+    let leaf = {
+        let mut s = make_span(Some("db.query"), 85.0, vec![]);
+        s.is_transaction = false;
+        s
+    };
+    let mid2 = {
+        let mut s = make_span(Some("middleware.3"), 90.0, vec![leaf]);
+        s.is_transaction = false;
+        s
+    };
+    let mid1 = {
+        let mut s = make_span(Some("middleware.2"), 95.0, vec![mid2]);
+        s.is_transaction = false;
+        s
+    };
+    let mid0 = {
+        let mut s = make_span(Some("middleware.1"), 98.0, vec![mid1]);
+        s.is_transaction = false;
+        s
+    };
+    let root = make_span(Some("http.server"), 100.0, vec![mid0]);
+
+    let result = select_interesting_spans(&[root], 20);
+    // root (tx) always included; middleware spans are dominated by single child (≥90%)
+    // so they get skipped; leaf db.query is not dominated and ≥ 10ms
+    assert!(
+        result
+            .iter()
+            .any(|s| s.op.as_deref() == Some("http.server"))
+    );
+    assert!(result.iter().any(|s| s.op.as_deref() == Some("db.query")));
+    let middleware_count = result
+        .iter()
+        .filter(|s| {
+            s.op.as_deref()
+                .map(|o| o.starts_with("middleware"))
+                .unwrap_or(false)
+        })
+        .count();
+    assert_eq!(middleware_count, 0);
+}
+
+#[test]
+fn test_select_interesting_spans_dominated_keeps_transaction() {
+    let child = {
+        let mut s = make_span(Some("db"), 95.0, vec![]);
+        s.is_transaction = false;
+        s
+    };
+    // Parent is a transaction dominated by a single child — still included
+    let mut parent = make_span(Some("http"), 100.0, vec![child]);
+    parent.is_transaction = true;
+
+    let result = select_interesting_spans(&[parent], 20);
+    assert!(result.iter().any(|s| s.op.as_deref() == Some("http")));
+    assert!(result.iter().any(|s| s.op.as_deref() == Some("db")));
+}
+
+#[test]
+fn test_select_interesting_spans_error_below_threshold() {
+    let mut span = make_span(Some("tiny.error"), 1.0, vec![]);
+    span.is_transaction = false;
+    span.errors = vec![serde_json::json!({"title": "something broke"})];
+
+    let result = select_interesting_spans(&[span], 20);
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].op.as_deref(), Some("tiny.error"));
+}
+
+#[test]
+fn test_select_interesting_spans_sorted_by_duration() {
+    let s1 = make_span(Some("fast"), 20.0, vec![]);
+    let s2 = make_span(Some("slow"), 500.0, vec![]);
+    let s3 = make_span(Some("medium"), 100.0, vec![]);
+
+    let result = select_interesting_spans(&[s1, s2, s3], 20);
+    assert_eq!(result[0].op.as_deref(), Some("slow"));
+    assert_eq!(result[1].op.as_deref(), Some("medium"));
+    assert_eq!(result[2].op.as_deref(), Some("fast"));
+}
+
+#[test]
+fn test_select_interesting_spans_children_stripped() {
+    let child = make_span(Some("db"), 50.0, vec![]);
+    let parent = make_span(Some("http"), 200.0, vec![child]);
+
+    let result = select_interesting_spans(&[parent], 20);
+    for span in &result {
+        assert!(span.children.is_empty());
+    }
+}
