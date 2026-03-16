@@ -1,4 +1,5 @@
 mod api_client;
+mod json_ext;
 mod tools;
 
 use rmcp::{ServiceExt, transport::stdio};

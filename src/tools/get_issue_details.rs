@@ -1,4 +1,5 @@
 use crate::api_client::SentryApi;
+use crate::json_ext::ValueExt;
 use regex::Regex;
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
@@ -7,20 +8,14 @@ use serde_json::Value;
 use std::sync::LazyLock;
 
 pub fn format_frame_detail(output: &mut String, frame: &Value) {
-    let filename = frame
-        .get("filename")
-        .and_then(|v| v.as_str())
-        .unwrap_or("?");
-    let lineno = frame.get("lineNo").and_then(|v| v.as_i64()).unwrap_or(0);
-    let func = frame
-        .get("function")
-        .and_then(|v| v.as_str())
-        .unwrap_or("?");
+    let filename = frame.str_field("filename").unwrap_or("?");
+    let lineno = frame.i64_field("lineNo").unwrap_or(0);
+    let func = frame.str_field("function").unwrap_or("?");
     output.push_str(&format!(
         "─────────────────────\n  File \"{}\", line {}, in {}\n\n",
         filename, lineno, func
     ));
-    if let Some(context) = frame.get("context").and_then(|v| v.as_array()) {
+    if let Some(context) = frame.array_field("context") {
         for line in context {
             if let Some(arr) = line.as_array()
                 && arr.len() >= 2
@@ -32,7 +27,7 @@ pub fn format_frame_detail(output: &mut String, frame: &Value) {
             }
         }
     }
-    if let Some(vars) = frame.get("vars").and_then(|v| v.as_object())
+    if let Some(vars) = frame.object_field("vars")
         && !vars.is_empty()
     {
         output.push_str("\nLocal Variables:\n");
@@ -53,35 +48,28 @@ pub fn format_frame_detail(output: &mut String, frame: &Value) {
 }
 
 pub fn format_exception(output: &mut String, exc: &Value) {
-    let exc_type = exc.get("type").and_then(|v| v.as_str()).unwrap_or("Error");
-    let exc_value = exc.get("value").and_then(|v| v.as_str()).unwrap_or("");
+    let exc_type = exc.str_field("type").unwrap_or("Error");
+    let exc_value = exc.str_field("value").unwrap_or("");
     output.push_str(&format!("\n### {}: {}\n", exc_type, exc_value));
     if let Some(stacktrace) = exc.get("stacktrace")
-        && let Some(frames) = stacktrace.get("frames").and_then(|v| v.as_array())
+        && let Some(frames) = stacktrace.array_field("frames")
     {
         let frames_vec: Vec<_> = frames.iter().collect();
         if let Some(relevant) = frames_vec
             .iter()
             .rev()
-            .find(|f| f.get("inApp").and_then(|v| v.as_bool()).unwrap_or(false))
+            .find(|f| f.bool_field("inApp").unwrap_or(false))
         {
             output.push_str("\n**Most Relevant Frame:**\n");
             format_frame_detail(output, relevant);
         }
         output.push_str("\n**Full Stacktrace:**\n────────────────\n```\n");
         for frame in frames_vec.iter().rev().take(20) {
-            let filename = frame
-                .get("filename")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let lineno = frame.get("lineNo").and_then(|v| v.as_i64()).unwrap_or(0);
-            let func = frame
-                .get("function")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
+            let filename = frame.str_field("filename").unwrap_or("?");
+            let lineno = frame.i64_field("lineNo").unwrap_or(0);
+            let func = frame.str_field("function").unwrap_or("?");
             let context_line = frame
-                .get("context")
-                .and_then(|v| v.as_array())
+                .array_field("context")
                 .and_then(|ctx| {
                     ctx.iter().find(|line| {
                         line.as_array()
@@ -108,13 +96,13 @@ pub fn format_exception(output: &mut String, exc: &Value) {
 pub fn format_event_entries(output: &mut String, entries: &[crate::api_client::EventEntry]) {
     for entry in entries {
         if entry.entry_type == "exception" {
-            if let Some(values) = entry.data.get("values").and_then(|v| v.as_array()) {
+            if let Some(values) = entry.data.array_field("values") {
                 for exc in values {
                     format_exception(output, exc);
                 }
             }
         } else if entry.entry_type == "message"
-            && let Some(msg) = entry.data.get("formatted").and_then(|v| v.as_str())
+            && let Some(msg) = entry.data.str_field("formatted")
         {
             output.push_str(&format!("\n### Message\n{}\n", msg));
         }

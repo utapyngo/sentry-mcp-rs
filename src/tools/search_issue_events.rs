@@ -1,4 +1,5 @@
 use crate::api_client::{Event, EventsQuery, SentryApi};
+use crate::json_ext::ValueExt;
 use rmcp::{ErrorData as McpError, model::CallToolResult};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -57,11 +58,11 @@ pub fn format_events_output(issue_id: &str, query: Option<&str>, events: &[Event
         }
         for entry in &event.entries {
             if entry.entry_type == "exception"
-                && let Some(values) = entry.data.get("values").and_then(|v| v.as_array())
+                && let Some(values) = entry.data.array_field("values")
             {
                 for exc in values {
-                    let exc_type = exc.get("type").and_then(|v| v.as_str()).unwrap_or("?");
-                    let exc_value = exc.get("value").and_then(|v| v.as_str()).unwrap_or("?");
+                    let exc_type = exc.str_field("type").unwrap_or("?");
+                    let exc_value = exc.str_field("value").unwrap_or("?");
                     output.push_str(&format!("**Exception:** {} - {}\n", exc_type, exc_value));
                 }
             }
