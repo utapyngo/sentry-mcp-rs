@@ -186,7 +186,8 @@ impl SentryApiClient {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::AUTHORIZATION,
-            header::HeaderValue::from_str(&format!("Bearer {}", auth_token)).unwrap(),
+            header::HeaderValue::from_str(&format!("Bearer {}", auth_token))
+                .expect("SENTRY_AUTH_TOKEN contains invalid header characters"),
         );
         let mut builder = Client::builder().default_headers(headers);
         if let Ok(proxy_url) = env::var("SOCKS_PROXY").or_else(|_| env::var("socks_proxy")) {

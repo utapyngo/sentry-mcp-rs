@@ -67,7 +67,7 @@ pub fn select_interesting_spans(spans: &[TraceSpan], max_spans: usize) -> Vec<Tr
     for span in spans {
         collect_interesting(span, &mut collected);
     }
-    collected.sort_by(|a, b| b.duration.partial_cmp(&a.duration).unwrap());
+    collected.sort_by(|a, b| b.duration.total_cmp(&a.duration));
     collected.truncate(max_spans);
     collected
 }
@@ -137,7 +137,7 @@ pub fn format_trace_output(
     {
         output.push_str("\n## Operation Breakdown\n\n");
         let mut map_vec: Vec<_> = meta.span_count_map.iter().collect();
-        map_vec.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
+        map_vec.sort_by(|a, b| b.1.total_cmp(a.1));
         for (op, count) in map_vec {
             output.push_str(&format!("- **{}**: {}\n", op, *count as i64));
         }
@@ -149,7 +149,7 @@ pub fn format_trace_output(
         if !ops.is_empty() {
             output.push_str("\n## Operation Breakdown\n\n");
             let mut ops_vec: Vec<_> = ops.into_iter().collect();
-            ops_vec.sort_by(|a, b| b.1.1.partial_cmp(&a.1.1).unwrap());
+            ops_vec.sort_by(|a, b| b.1.1.total_cmp(&a.1.1));
             for (op, (count, total_ms)) in ops_vec {
                 output.push_str(&format!(
                     "- **{}**: {} occurrences, {} total\n",
