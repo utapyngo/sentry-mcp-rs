@@ -15,6 +15,10 @@ Compared to the [official Node.js server](https://www.npmjs.com/package/@sentry/
 - **Disk:** single binary, no runtime dependencies
 - **Tokens:** fewer tools = smaller tool list in context
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/utapyngo-sentry-mcp-rs).
+
 ## Features
 
 This MCP server provides tools to interact with Sentry's API:
